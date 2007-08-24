@@ -231,7 +231,7 @@ sub create_feature {
 	$feature->start(1);
 	$feature->end($feat->{seqlen});
     }
-
+	print Dumper $feat;
     $feature->add_tag_value('location',            $MAPLOC->{$feat->{loc}})   if(exists($MAPLOC->{$feat->{loc}}));
     $feature->add_tag_value('chloroplastCutOff',   $feat->{cTP})              if(defined($feat->{cTP}));
     $feature->add_tag_value('mitochondrionCutOff', $feat->{mTP})              if(defined($feat->{mTP}));

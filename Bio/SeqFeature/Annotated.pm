@@ -87,6 +87,26 @@ use URI::Escape;
 
 use base qw(Bio::Root::Root Bio::SeqFeatureI Bio::AnnotatableI Bio::FeatureHolderI);
 
+our %tagclass = (
+  comment        => 'Bio::Annotation::Comment',
+  dblink         => 'Bio::Annotation::DBLink',
+  description    => 'Bio::Annotation::SimpleValue',
+  gene_name      => 'Bio::Annotation::SimpleValue',
+  ontology_term  => 'Bio::Annotation::OntologyTerm',
+  reference      => 'Bio::Annotation::Reference',
+  __DEFAULT__    => 'Bio::Annotation::SimpleValue',
+);
+
+our %tag2text = (
+  'Bio::Annotation::Comment'        => 'text',
+  'Bio::Annotation::DBLink'         => 'primary_id',
+  'Bio::Annotation::SimpleValue'    => 'value',
+  'Bio::Annotation::SimpleValue'    => 'value',
+  'Bio::Annotation::OntologyTerm'   => 'name',
+  'Bio::Annotation::Reference'      => 'title',
+  __DEFAULT__                       => 'value',
+);
+
 ######################################
 #get_SeqFeatures
 #display_name
@@ -666,67 +686,6 @@ sub entire_seq {
   return shift->{'seq'};
 }
 
-=head2 has_tag()
-
- See Bio::AnnotatableI::has_tag().
-
-=cut
-
-#implemented in Bio::AnnotatableI
-
-# sub has_tag {
-#   return shift->annotation->has_tag(@_);
-# }
-
-=head2 add_tag_value()
-
- See Bio::AnnotatableI::add_tag_value().
-
-=cut
-
-#implemented in Bio::AnnotatableI
-
-# sub add_tag_value {
-#   return shift->annotation->add_tag_value(@_);
-# }
-
-=head2 get_tag_values()
-
- See Bio::AnnotationCollectionI::get_tag_values().
-
-=cut
-
-#implemented in Bio::AnnotatableI
-
-# sub get_tag_values {
-#   return shift->annotation->get_tag_values(@_);
-# }
-
-=head2 get_all_tags()
-
- See Bio::AnnotationCollectionI::get_all_annotation_keys().
-
-=cut
-
-#implemented in Bio::AnnotatableI
-
-# sub get_all_tags {
-#   return shift->annotation->get_all_annotation_keys(@_);
-# }
-
-=head2 remove_tag()
-
- See Bio::AnnotationCollectionI::remove_tag().
-
-=cut
-
-#implemented in Bio::AnnotatableI
-
-# sub remove_tag {
-#   return shift->annotation->remove_tag(@_);
-# }
-
-
 ############################################################
 
 =head1 INTERFACE METHODS FOR Bio::RangeI
@@ -993,6 +952,169 @@ sub _expand_region {
         $self->end($range->end);
         $self->strand($range->strand);
     }
+}
+
+=head2 get_Annotations
+
+ Usage   : my $parent   = $obj->get_Annotations('Parent');
+           my @parents = $obj->get_Annotations('Parent');
+ Function: a wrapper around Bio::Annotation::Collection::get_Annotations().
+ Returns : returns annotations as
+           Bio::Annotation::Collection::get_Annotations() does, but
+           additionally returns a single scalar in scalar context
+           instead of list context so that if an annotation tag
+           contains only a single value, you can do:
+
+           $parent = $feature->get_Annotations('Parent');
+
+           instead of:
+
+           ($parent) = ($feature->get_Annotations('Parent'))[0];
+
+           if the 'Parent' tag has multiple values and is called in a
+           scalar context, the number of annotations is returned.
+
+ Args    : an annotation tag name.
+
+=cut
+
+sub get_Annotations {
+    my $self = shift;
+
+    my @annotations = $self->annotation->get_Annotations(@_);
+
+    if(wantarray){
+        return @annotations;
+    } elsif(scalar(@annotations) == 1){
+        return $annotations[0];
+    } else {
+        return scalar(@annotations);
+    }
+}
+
+=head1 Bio::SeqFeatureI implemented methods
+
+These are specialized implementations of SeqFeatureI methods which call the
+internal Bio::Annotation::AnnotationCollection object. Just prior to the 1.5
+release the below methods were moved from Bio::SeqFeatureI to Bio::AnnotatableI,
+and having Bio::SeqFeatureI inherit Bio::AnnotatableI. This behavior forced all
+Bio::SeqFeatureI-implementing classes to use Bio::Annotation objects for any
+data. It is the consensus of the core developers that this be rolled back in
+favor of a more flexible approach by rolling back the above changes and making
+this class Bio::AnnotatableI. The SeqFeatureI tag-related methods are
+reimplemented in order to approximate the same behavior as before.
+
+The methods below allow mapping of the "get_tag_values()"-style annotation
+access to Bio::AnnotationCollectionI. These need not be implemented in a
+Bio::AnnotationCollectionI compliant class, as they are built on top of the
+methods.  For usage, see Bio::SeqFeatureI.
+
+=cut
+
+=head2 has_tag
+
+=cut
+
+sub has_tag {
+  my ($self,$tag) = @_;
+  return scalar($self->annotation->get_Annotations($tag));
+}
+
+=head2 add_tag_value
+
+=cut
+
+sub add_tag_value {
+  my ($self,$tag,@vals) = @_;
+
+  foreach my $val (@vals){
+    my $class = $tagclass{$tag}   || $tagclass{__DEFAULT__};
+    my $slot  = $tag2text{$class};
+
+    my $a = $class->new();
+    $a->$slot($val);
+
+    $self->annotation->add_Annotation($tag,$a);
+  }
+
+  return 1;
+}
+
+=head2 get_tag_values
+
+ Usage   : @annotations = $obj->get_tag_values($tag)
+ Function: returns annotations corresponding to $tag
+ Returns : a list of scalars
+ Args    : tag name
+
+=cut
+
+sub get_tag_values {
+    my ($self,$tag) = @_;
+    if(!$tagclass{$tag} && $self->annotation->get_Annotations($tag)){
+        #new tag, haven't seen it yet but it exists.  add to registry
+        my($proto) = $self->annotation->get_Annotations($tag);
+        # we can only register if there's a method known for obtaining the value
+        if (exists($tag2text{ref($proto)})) {
+            $tagclass{$tag} = ref($proto);
+        }
+    }
+
+    my $slot  = $tag2text{ $tagclass{$tag} || $tagclass{__DEFAULT__} };
+    
+    return map { $_->$slot } $self->annotation->get_Annotations($tag);
+}
+
+=head2 get_tagset_values
+
+ Usage   : @annotations = $obj->get_tagset_values($tag1,$tag2)
+ Function: returns annotations corresponding to a list of tags.
+           this is a convenience method equivalent to multiple calls
+           to get_tag_values with each tag in the list.
+ Returns : a list of Bio::AnnotationI objects.
+ Args    : a list of tag names
+
+=cut
+
+sub get_tagset_values {
+  my ($self,@tags) = @_;
+  my @r = ();
+  foreach my $tag (@tags){
+    my $slot  = $tag2text{ $tagclass{$tag} || $tagclass{__DEFAULT__} };
+    push @r, map { $_->$slot } $self->annotation->get_Annotations($tag);
+  }
+  return @r;
+}
+
+=head2 get_all_tags
+
+ Usage   : @tags = $obj->get_all_tags()
+ Function: returns a list of annotation tag names.
+ Returns : a list of tag names
+ Args    : none
+
+=cut
+
+sub get_all_tags {
+  my ($self,@args) = @_;
+  return $self->annotation->get_all_annotation_keys(@args);
+}
+
+=head2 remove_tag
+
+ Usage   : See remove_Annotations().
+ Function:
+ Returns : 
+ Args    : 
+ Note    : Contrary to what the name suggests, this method removes
+           all annotations corresponding to $tag, not just a
+           single anntoation.
+
+=cut
+
+sub remove_tag {
+  my ($self,@args) = @_;
+  return $self->annotation->remove_Annotations(@args);
 }
 
 1;
