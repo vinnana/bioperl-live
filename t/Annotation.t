@@ -7,7 +7,7 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 109);
+    test_begin(-tests => 112);
 	
 	use_ok('Bio::Annotation::Collection');
 	use_ok('Bio::Annotation::DBLink');
@@ -19,7 +19,7 @@ BEGIN {
 	use_ok('Bio::Annotation::StructuredValue');
 	use_ok('Bio::Annotation::Tree');
 	use_ok('Bio::Seq');
-	use_ok('Bio::SeqFeature::Generic');
+	use_ok('Bio::SeqFeature::Annotated');
 	use_ok('Bio::SimpleAlign');
 	use_ok('Bio::Cluster::UniGene');
 }
@@ -179,8 +179,12 @@ SKIP: {
 # AnnotatableI
 my $seq = Bio::Seq->new();
 isa_ok($seq,"Bio::AnnotatableI");
+my $fea = Bio::SeqFeature::Annotated->new();
+isa_ok($fea, "Bio::SeqFeatureI",'isa SeqFeatureI');
+ok($fea->isa("Bio::AnnotatableI"),'isa AnnotatableI');
 my $fea = Bio::SeqFeature::Generic->new();
-isa_ok($fea, "Bio::AnnotatableI");
+isa_ok($fea, "Bio::SeqFeatureI",'isa SeqFeatureI');
+ok(!$fea->isa("Bio::AnnotatableI"),'is not a AnnotatableI');
 my $clu = Bio::Cluster::UniGene->new();
 isa_ok($clu, "Bio::AnnotatableI");
 my $aln = Bio::SimpleAlign->new();
