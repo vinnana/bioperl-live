@@ -182,7 +182,7 @@ isa_ok($seq,"Bio::AnnotatableI");
 my $fea = Bio::SeqFeature::Annotated->new();
 isa_ok($fea, "Bio::SeqFeatureI",'isa SeqFeatureI');
 ok($fea->isa("Bio::AnnotatableI"),'isa AnnotatableI');
-my $fea = Bio::SeqFeature::Generic->new();
+$fea = Bio::SeqFeature::Generic->new();
 isa_ok($fea, "Bio::SeqFeatureI",'isa SeqFeatureI');
 ok(!$fea->isa("Bio::AnnotatableI"),'is not a AnnotatableI');
 my $clu = Bio::Cluster::UniGene->new();
