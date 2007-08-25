@@ -130,14 +130,13 @@ methods. Internal methods are usually preceded with a _
 package Bio::SeqFeature::Generic;
 use strict;
 
-use Bio::AnnotatableI;
 use Bio::Annotation::Collection;
 use Bio::Location::Simple;
 use Bio::Location::Split;
 use Bio::Tools::GFF;
 #use Tie::IxHash;
 
-use base qw(Bio::Root::Root Bio::SeqFeatureI Bio::FeatureHolderI);
+use base qw(Bio::Root::Root Bio::SeqFeatureI Bio::FeatureHolderI Bio::AnnotatableI);
 
 sub new {
     my ( $caller, @args) = @_;

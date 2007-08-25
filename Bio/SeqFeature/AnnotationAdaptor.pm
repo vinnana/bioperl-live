@@ -320,7 +320,7 @@ sub get_num_of_annotations{
   my $num_anns = 0;
 
   foreach ($self->feature()->all_tags()) {
-	$num_anns += scalar( $self->feature()->annotation->get_Annotations($_) );
+	$num_anns += scalar( $self->feature()->each_tag_value($_));
   }
 
   # add from the annotation implementation if any
