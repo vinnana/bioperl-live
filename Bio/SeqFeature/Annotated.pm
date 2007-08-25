@@ -82,10 +82,14 @@ use Bio::LocatableSeq;
 use Bio::Location::Simple;
 use Bio::Ontology::OntologyStore;
 use Bio::Tools::GFF;
-
+use Bio::SeqFeature::AnnotationAdaptor;
+use Data::Dumper;
 use URI::Escape;
 
-use base qw(Bio::Root::Root Bio::SeqFeatureI Bio::AnnotatableI Bio::FeatureHolderI);
+use base qw(Bio::Root::Root
+    Bio::SeqFeature::TypedSeqFeatureI
+    Bio::AnnotatableI
+    Bio::FeatureHolderI);
 
 our %tagclass = (
   comment        => 'Bio::Annotation::Comment',
@@ -198,7 +202,9 @@ sub _initialize {
 sub from_feature {
   my ($self,$feat,%opts) = @_;
 
-  ref($feat) && ($feat->isa('Bio::AnnotationCollectionI') || $feat->isa('Bio::SeqFeatureI'))
+  # should deal with any SeqFeatureI implementation (i.e. we don't want to
+  # automatically force a OO-heavy implementation on all classes)
+  ref($feat) && ($feat->isa('Bio::SeqFeatureI')) 
     or $self->throw('invalid arguments to from_feature');
 
   #TODO: add overrides in opts for these values, so people don't have to screw up their feature object
@@ -210,22 +216,21 @@ sub from_feature {
     $self->$fieldname( $feat->$fieldname );
   }
 
-  ### now pick up the annotations/tags of the other feature
-  #for Bio::AnnotationCollectionI-containing features
-  if ( $feat->isa('Bio::AnnotatableI') ) {
-    foreach my $key ( $feat->annotation->get_all_annotation_keys() ) {
-      my @values = $feat->annotation->get_Annotations($key);
+  # now pick up the annotations/tags of the other feature
+  # We'll use AnnotationAdaptor to convert everything over
+  my $anncoll = Bio::SeqFeature::AnnotationAdaptor->new(-feature => $feat);
+  
+    for my $key ( $anncoll->get_all_annotation_keys() ) {
+      my @values = $anncoll->get_Annotations($key);
       @values = _aggregate_scalar_annotations(\%opts,$key,@values);
       foreach my $val (@values) {
         $self->add_Annotation($key,$val)
       }
     }
-  } else { # SeqFeatureI, annotation needs to be mapped first
-    $self->throw("SeqFeatureI not supported yet");
-  }
 }
 #given a key and its values, make the values into
 #Bio::Annotation::\w+ objects
+
 sub _aggregate_scalar_annotations {
   my ($opts,$key,@values) = @_;
 
@@ -585,24 +590,15 @@ sub remove_Annotations {
 
 sub display_name {
   my $self = shift;
-
-  #1.6
-  #$self->warn('display_name() is deprecated, use name()');
-
   return $self->name(@_);
 }
 
 =head2 primary_tag()
 
- Deprecated, use L<Bio::SeqFeatureI/type()>.  Will raise a warning.
-
 =cut
 
 sub primary_tag {
   my $self = shift;
-
-  #1.6
-  #$self->warn('primary_tag() is deprecated, use type()');
   my $t = $self->type(@_);
   return ref($t) ? $t->name : $t;
 }
