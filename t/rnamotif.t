@@ -37,20 +37,16 @@ is($genes[6]->primary_tag, 'tRNA_gene','RNAMotif::primary_tag()');
 is($genes[22]->start, 464,'RNAMotif::start()');
 is($genes[8]->end, 585,'RNAMotif::end()');
 is($genes[9]->strand, 1,'RNAMotif::strand()');
-($val) = $genes[90]->get_tag_values('sequence');
-is($val,
+is(($genes[90]->get_tag_values('sequence'))[0],
    'cggatt ta ttg ggcg taa a gggct cgtaggc ggctc'.
    ' gtcgcgtccggtgtgaaagtc catc gcttaac ggtg gatctg cgcc',
    "RNAMotif::get_tag_values('sequence')");
-($val) = $genes[90]->get_tag_values('descfile');
-is($val, 'trna.strict.descr',
+is(($genes[90]->get_tag_values('descfile'))[0], 'trna.strict.descr',
    "RNAMotif::get_tag_values('descfile')");
-($val) = $genes[4]->get_tag_values('descline');
-is($val,
+is(($genes[4]->get_tag_values('descline'))[0],
    'gi|173683|gb|M10671|ACSTRW Avian oncornavirus Trp-tRNA',
    "RNAMotif::get_tag_values('descline')");
-($val) = $genes[26]->get_tag_values('secstructure');
-is($val,
+is(($genes[26]->get_tag_values('secstructure'))[0],
    'h5 ss h5 ss h3 ss h5 ss h3 ss h5 ss h3 h3 ss',
    "RNAMotif::get_tag_values('secstructure')");
 is($genes[4]->score, '0.000','RNAMotif::score()');
@@ -74,18 +70,14 @@ is($genes[6]->primary_tag, 'term','RNAMotif::primary_tag()');
 is($genes[22]->start, 141,'RNAMotif::start()');
 is($genes[8]->end, 154,'RNAMotif::end()');
 is($genes[9]->strand, -1,'RNAMotif::strand()');
-($val) = $genes[90]->get_tag_values('sequence');
-is($val, 'ggggaag cttg cttcccc',
+is(($genes[90]->get_tag_values('sequence'))[0], 'ggggaag cttg cttcccc',
    "RNAMotif::get_tag_values('sequence')");
-($val) = $genes[84]->get_tag_values('descfile');
-is($val, 'sprintf.descr',
+is(($genes[84]->get_tag_values('descfile'))[0], 'sprintf.descr',
    "RNAMotif::get_tag_values('descfile')");
-($val) = $genes[4]->get_tag_values('descline');
-is($val,
+is(($genes[4]->get_tag_values('descline'))[0],
    'gi|173741|gb|M83548|AQF16SRRN Aquifex pyrophilus 16S ribosomal RNA (16S rRNA)',
    "RNAMotif::get_tag_values('descline')");
-($val) = $genes[26]->get_tag_values('secstructure');
-is($val, 'h5 ss h3',
+is(($genes[26]->get_tag_values('secstructure'))[0], 'h5 ss h3',
    "RNAMotif::get_Annotations('secstructure')");
 is($genes[4]->score, '-12.100,5,gaaa','RNAMotif::score()');
 is($genes[4]->source_tag, 'RNAMotif','RNAMotif::source_tag()');

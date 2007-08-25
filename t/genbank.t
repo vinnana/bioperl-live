@@ -128,9 +128,9 @@ ok($seq = $str->next_seq);
 my @rpts = grep { $_->primary_tag eq 'repeat_region' }
   $seq->get_SeqFeatures;
 is $#rpts, 2, 'bug 1647';
-my @rpt_units = map {$_->get_tag_values('rpt_unit')} @rpts;
+my @rpt_units = grep {$_->has_tag('rpt_unit')} @rpts;
 is $#rpt_units, 0;
-is $rpt_units[0],'(TG)10;A;(TG)7';
+is(($rpt_units[0]->get_tag_values('rpt_unit'))[0],'(TG)10;A;(TG)7');
 
 # test bug #1673 , RDB-II genbank files
 $str = Bio::SeqIO->new(-format => 'genbank',

@@ -131,9 +131,9 @@ ok($seq = $str->next_seq);
 my @rpts = grep { $_->primary_tag eq 'repeat_region' }
   $seq->get_SeqFeatures;
 is $#rpts, 2, 'bug 1647';
-my @rpt_units = map {$_->get_tag_values('rpt_unit')} @rpts;
+my @rpt_units = grep {$_->has_tag('rpt_unit')} @rpts;
 is $#rpt_units, 0;
-is $rpt_units[0],'(TG)10;A;(TG)7';
+is(($rpt_units[0]->get_tag_values('rpt_unit'))[0],'(TG)10;A;(TG)7');
 
 # test bug #1673 , RDB-II genbank files
 $str = Bio::SeqIO->new(-format => 'gbdriver',
@@ -688,7 +688,7 @@ is($seq->species->ncbi_taxid, 6239);
 
 # version, seq_update, dates (5 tests)
 is($seq->version, 40);
-my ($ann) = $seq->get_Annotations('seq_update');
+my ($ann) = $seq->annotation->get_Annotations('seq_update');
 is($ann, 35);
 my @dates = $seq->get_dates;
 is (scalar(@dates), 3, 'dates');
@@ -711,7 +711,7 @@ is($refs[20]->rp, 'VARIANTS X-ALD LEU-98; ASP-99; GLU-217; GLN-518; ASP-608; ILE
 
 # version, seq_update, dates (5 tests)
 is($seq->version, 44);
-($ann) = $seq->get_Annotations('seq_update');
+($ann) = $seq->annotation->get_Annotations('seq_update');
 is($ann, 28);
 @dates = $seq->get_dates;
 @date_check = qw(01-FEB-1994 01-FEB-1994 15-JUN-2004);
@@ -735,7 +735,7 @@ is(scalar $as->annotation->get_Annotations('reference'), 11);
 
 # version, seq_update, dates (5 tests)
 is($as->version, 35);
-($ann) = $as->get_Annotations('seq_update');
+($ann) = $as->annotation->get_Annotations('seq_update');
 is($ann, 15);
 @dates = $as->get_dates;
 @date_check = qw(01-MAR-1989 01-AUG-1990 01-NOV-1997);
@@ -765,7 +765,7 @@ is(($f[1]->get_tag_values('description'))[0], 'COMPLEMENT COMPONENT 1, Q SUBCOMP
 
 # version, seq_update, dates (5 tests)
 is($seq->version, 40);
-($ann) = $seq->get_Annotations('seq_update');
+($ann) = $seq->annotation->get_Annotations('seq_update');
 is($ann, 31);
 @dates = $seq->get_dates;
 @date_check = qw(01-FEB-1995 01-FEB-1995 01-OCT-2000);
@@ -939,7 +939,7 @@ is($seq->species->ncbi_taxid, "6239");
 
 # version, seq_update, dates (5 tests)
 is($seq->version, 44);
-($ann) = $seq->get_Annotations('seq_update');
+($ann) = $seq->annotation->get_Annotations('seq_update');
 is($ann, 1);
 @dates = $seq->get_dates;
 @date_check = qw(01-NOV-1997 01-NOV-1996 30-MAY-2006 );
@@ -978,7 +978,7 @@ isa_ok($seq->species, 'Bio::Taxon');
 is($seq->species->ncbi_taxid, 6239);
 
 is($seq->version, 47);
-($ann) = $seq->get_Annotations('seq_update');
+($ann) = $seq->annotation->get_Annotations('seq_update');
 is($ann, 1);
 @dates = $seq->get_dates;
 @date_check = qw(01-NOV-1997 01-NOV-1996 31-OCT-2006 );
