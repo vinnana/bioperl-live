@@ -211,15 +211,17 @@ sub from_feature {
   }
 
   ### now pick up the annotations/tags of the other feature
-  #for Bio::AnnotationCollectionI features
+  #for Bio::AnnotationCollectionI-containing features
   if ( $feat->isa('Bio::AnnotatableI') ) {
     foreach my $key ( $feat->annotation->get_all_annotation_keys() ) {
       my @values = $feat->annotation->get_Annotations($key);
       @values = _aggregate_scalar_annotations(\%opts,$key,@values);
       foreach my $val (@values) {
-	$self->add_Annotation($key,$val)
+        $self->add_Annotation($key,$val)
       }
     }
+  } else { # SeqFeatureI, annotation needs to be mapped first
+    $self->throw("SeqFeatureI not supported yet");
   }
 }
 #given a key and its values, make the values into
