@@ -1,5 +1,5 @@
 # -*-Perl-*- Test Harness script for Bioperl
-# $Id: SeqFeature.t,v 1.50 2007/06/27 10:16:37 sendu Exp $
+# $Id: SeqFeatAnnotated.t,v 1.50 2007/06/27 10:16:37 sendu Exp $
 
 use strict;
 
@@ -7,21 +7,11 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 40,
+    test_begin(-tests => 24,
 	-requires_module => 'URI::Escape');
 	
-	use_ok('Bio::Seq');
-	use_ok('Bio::SeqIO');
 	use_ok('Bio::SeqFeature::Generic');
 	use_ok('Bio::SeqFeature::Annotated');
-	use_ok('Bio::SeqFeature::FeaturePair');
-	use_ok('Bio::SeqFeature::Computation');
-	use_ok('Bio::SeqFeature::Gene::Transcript');
-	use_ok('Bio::SeqFeature::Gene::UTR');
-	use_ok('Bio::SeqFeature::Gene::Exon');
-	use_ok('Bio::SeqFeature::Gene::Poly_A_site');
-	use_ok('Bio::SeqFeature::Gene::GeneStructure');
-	use_ok('Bio::Location::Fuzzy');
 }
 
 SKIP: {
