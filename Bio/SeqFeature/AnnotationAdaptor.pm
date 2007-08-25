@@ -47,7 +47,7 @@ Bio::SeqFeature::AnnotationAdaptor - integrates SeqFeatureIs annotation
    # to integrate tag/value annotation with AnnotationCollectionI
    # annotation, use this adaptor, which also implements 
    # Bio::AnnotationCollectionI
-   my $anncoll = Bio::SeqFeature::AnnotationAdaptor(-feature => $feat);
+   my $anncoll = Bio::SeqFeature::AnnotationAdaptor->new(-feature => $feat);
 
    # this will now return tag/value pairs as 
    # Bio::Annotation::SimpleValue objects
