@@ -7,7 +7,7 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 24,
+    test_begin(-tests => 26,
 	-requires_module => 'URI::Escape');
 	
 	use_ok('Bio::SeqFeature::Generic');
@@ -45,7 +45,8 @@ SKIP: {
     
     is $sfa2->type->name,'nucleotide_motif';
     is $sfa2->primary_tag, 'nucleotide_motif';
-    is $sfa2->source,'program_a';
+    is $sfa2->source->display_text,'program_a';
+    is $sfa2->source_tag,'program_a';
     is $sfa2->strand,1;
     is $sfa2->start,400;
     is $sfa2->end,440;
@@ -64,15 +65,20 @@ SKIP: {
     
     is $sfa3->type->name,'nucleotide_motif', 'type->name';
     is $sfa3->primary_tag, 'nucleotide_motif', 'primary_tag';
-    is $sfa3->source,'program_a';
+    is $sfa3->source->display_text,'program_a';
+    is $sfa3->source_tag,'program_a';
     is $sfa3->strand,1;
     is $sfa3->start,400;
     is $sfa3->end,440;
     is $sfa3->get_Annotations('silly')->value,20;
     is $sfa3->get_Annotations('new')->value,1;
-    is $sfa3->score(), 12;
+    # Note there is an API conflict with SeqFeature::Generic, where score is a
+    # simple scalar, and here it is a Bio::Annotation::SimpleValue
+    # By popular vote there is no operator overloading, so this needs to be
+    # resolved
+    is $sfa3->score(), 12; 
     $sfa3->score(11);
-    is $sfa3->score(), 11;
-    $sfa3->score(0);		
+    is $sfa3->score(), 11; 
+    $sfa3->score(0);
     is $sfa3->score(), 0;	# test that setting to 0 no longer is overriddent to set score to '.' (fixed in Bio::SeqFeature::Annotated version 1.3.7)
 }

@@ -544,7 +544,7 @@ sub frame {
 
 ############################################################
 
-=head1 SHORTCUT METHDODS TO ACCESS Bio::AnnotatableI INTERFACE METHODS
+=head1 SHORTCUT METHODS TO ACCESS Bio::AnnotatableI INTERFACE METHODS
 
 =cut
 
@@ -580,11 +580,12 @@ sub remove_Annotations {
 
 =head1 INTERFACE METHODS FOR Bio::SeqFeatureI
 
+Note that no methods are deprecated.  Any SeqFeatureI methods must return
+strings (no objects).
+
 =cut
 
 =head2 display_name()
-
- Deprecated, use L<Bio::SeqFeatureI/name()>.  Will raise a warning.
 
 =cut
 
@@ -605,17 +606,12 @@ sub primary_tag {
 
 =head2 source_tag()
 
- Deprecated, use L<Bio::SeqFeatureI/source()>.  Will raise a warning.
-
 =cut
 
 sub source_tag {
   my $self = shift;
-
-  #1.6
-  #$self->warn('source_tag() is deprecated, use source()');
-
-  return $self->source(@_);
+  my $t = $self->source(@_);
+  return ref($self->source(@_)) ? $t->display_text : $t;
 }
 
 
@@ -739,7 +735,7 @@ sub end {
  Usage   : $strand = $feat->strand($newval)
  Function: get/set on strand information, being 1,-1 or 0
  Returns : -1,1 or 0
- Args    : ???
+ Args    : on set, new value (a scalar or undef, optional)
 
 =cut
 

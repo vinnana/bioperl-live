@@ -97,8 +97,8 @@ use strict;
 # Object preamble - inherits from Bio::Root::Root
 
 use Bio::Ontology::Term;
-use overload '""' => sub { $_[0]->identifier || ''};
-use overload 'eq' => sub { "$_[0]" eq "$_[1]" };
+#use overload '""' => sub { $_[0]->identifier || ''};
+#use overload 'eq' => sub { "$_[0]" eq "$_[1]" };
 
 use base qw(Bio::Root::Root Bio::AnnotationI Bio::Ontology::TermI);
 
@@ -163,6 +163,34 @@ sub as_text{
    my ($self) = @_;
 
    return $self->tagname()."|".$self->name()."|".($self->is_obsolete()||'');
+}
+
+=head2 display_text
+
+ Title   : display_text
+ Usage   : my $str = $ann->display_text();
+ Function: returns a string. Unlike as_text(), this method returns a string
+           formatted as would be expected for te specific implementation.
+           
+           One can pass a callback as an argument which allows custom text
+           generation; the callback is passed the current instance and any text
+           returned
+ Example :
+ Returns : a string
+ Args    : [optional] callback
+
+=cut
+
+{
+  my $DEFAULT_CB = sub { $_[0]->identifier || ''};
+
+  sub display_text {
+    my ($self, $cb) = @_;
+    $cb ||= $DEFAULT_CB;
+    $self->throw("") if ref $cb ne 'CODE';
+    return $cb->($self);
+  }
+
 }
 
 =head2 hash_tree

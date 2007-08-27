@@ -121,7 +121,7 @@ $accession = $seq->accession_number;
 is ($accession, 'CB161982');
 
 my @acs = $seq->annotation->get_Annotations('peripheral');
-is  $acs[0], 1;
+is  $acs[0]->display_text, 1;
 
 # tests not specific to unigene record provided in the unigene.data file
 my @locuslink_test = ( "58473", "5354" );

@@ -34,13 +34,13 @@ my $simple = Bio::Annotation::SimpleValue->new(
 						 ), ;
 
 isa_ok($simple, 'Bio::AnnotationI');
-is $simple, 1;
+is $simple->display_text, 1;
 is $simple->value, 1;
 is $simple->tagname, 'colour';
 
 is $simple->value(0), 0;
 is $simple->value, 0;
-is $simple, 0;
+is $simple->display_text, 0;
 
 # link
 
