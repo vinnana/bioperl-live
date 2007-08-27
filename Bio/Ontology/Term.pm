@@ -146,15 +146,15 @@ sub new {
                         $dblinks,
                         $references)
         = $self->_rearrange( [ qw( IDENTIFIER
-                                                                                NAME
-                                                                                DEFINITION
-                                                                                CATEGORY
-                                                                                ONTOLOGY
-                                                                                VERSION
-                                                                                IS_OBSOLETE
-                                                                                COMMENT
-                                                                                DBLINKS
-                                                                                REFERENCES
+        NAME
+        DEFINITION
+        CATEGORY
+        ONTOLOGY
+        VERSION
+        IS_OBSOLETE
+        COMMENT
+        DBLINKS
+        REFERENCES
        ) ], @args );
 
     $self->init();
@@ -518,7 +518,8 @@ sub has_dblink {
 =cut
 
 sub add_dblink_context {
-    my ($self, $value, $context)=@_;
+    my ($self, $value, $context) = @_;
+    $self->throw("Not a Bio::Annotation::DBLink") unless ref $value && $value->isa('Bio::Annotation::DBLink');
     return unless defined $value;
     $self->throw("'all' is a reserved word for context.") if $context eq 'all';
     $context ||= '_default';
