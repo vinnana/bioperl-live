@@ -1183,7 +1183,7 @@ sub _read_GenBank_References {
 
       /^REFERENCE/o && do {
 	  # store current reference
-	  $self->_add_ref_to_array(\@refs,$ref) if $ref;
+	  $self->_add_ref_to_array(\@refs,$ref) if defined $ref;
 	  # reset
 	  @authors = ();
 	  @title = ();
@@ -1208,7 +1208,7 @@ sub _read_GenBank_References {
   }
 
     # store last reference
-    $self->_add_ref_to_array(\@refs,$ref) if $ref;
+    $self->_add_ref_to_array(\@refs,$ref) if defined $ref;
 
     $$buffer = $_;
 

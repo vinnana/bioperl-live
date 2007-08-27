@@ -28,7 +28,7 @@ for my $in ( @genbank_files ) {
     my @values = $seq->annotation->get_Annotations('dblink');
     foreach my $value (@values) {
         my $output = $value->display_text;
-        ok(defined $output, '"'.$value . '"');          # check value is not empty
+        ok(defined $output, '"'.$output . '"');          # check value is not empty
         ok(index($output,'::') < 0       , 'no double colon'  );  # these tests seems silly
         ok( substr($output,-1) ne ':'    , 'no trailing colon');  #    but all have been known to occur
         ok(index($output,'  ') < 0       , 'no double space'  );  #

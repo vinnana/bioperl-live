@@ -58,6 +58,8 @@ use strict;
 #use overload '""' => sub { (($_[0]->database ? $_[0]->database . ':' : '' ) . ($_[0]->primary_id ? $_[0]->primary_id : '') . ($_[0]->version ? '.' . $_[0]->version : '')) || '' };
 #use overload 'eq' => sub { "$_[0]" eq "$_[1]" };
 
+use overload '""' => sub { $_[0]->throw("Operator overloading of AnnotationI is deprecated") };
+use overload 'eq' => sub { $_[0]->throw("Operator overloading of AnnotationI is deprecated") };
 
 use base qw(Bio::Root::Root Bio::AnnotationI Bio::IdentifiableI);
 

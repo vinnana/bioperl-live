@@ -525,7 +525,7 @@ sub add_dblink_context {
     if (! exists($self->{_dblinks}->{$context})) {
         $self->{_dblinks}->{$context} = [];
     }
-    if (grep {$_ eq $value} @{$self->{_dblinks}->{$context}}) {
+    if (grep {$_->display_text eq $value->display_text} @{$self->{_dblinks}->{$context}}) {
         $self->warn("$value exists in the dblink of $context");
     }
     push @{$self->{_dblinks}->{$context}}, $value;
@@ -586,7 +586,7 @@ sub add_reference {
     return unless @values;
     # avoid duplicates and undefs
     foreach my $reference (@values){
-        next unless $reference;
+        next unless defined $reference;
         next if grep{$_ eq $reference} @{$self->{_references}};
         push @{$self->{_references}}, $reference;
     }
