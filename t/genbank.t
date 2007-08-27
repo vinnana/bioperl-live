@@ -62,7 +62,7 @@ is(scalar @dblinks,1);
 is($dblinks[0]->database, 'GenBank');
 is($dblinks[0]->primary_id, 'AB072353');
 is($dblinks[0]->version, '1');
-is("$dblinks[0]", 'GenBank:AB072353.1');
+is($dblinks[0]->display_text, 'GenBank:AB072353.1','operator overloading in AnnotationI is deprecated');
 
 # test for multi-line SOURCE
 $ast = Bio::SeqIO->new(-format => 'genbank',
@@ -444,7 +444,8 @@ foreach my $in ('P35527.gb') {
     my $ac      = $seq->annotation();      # Bio::AnnotationCollection
     foreach my $key ($ac->get_all_annotation_keys() ) {
         my @values = $ac->get_Annotations($key);
-        foreach my $value (@values) {
+        foreach my $ann (@values) {
+            my $value = $ann->display_text;
             $ct++;
             if ($key eq 'dblink') {
 
