@@ -7,7 +7,7 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 546);
+    test_begin(-tests => 545);
 	
     use_ok('Bio::SeqIO');
 }
@@ -480,7 +480,7 @@ foreach my $in ('P35527.gb') {
     }
 }
 
-is($ct, 45);
+is($ct, 46);
 
 # bug 2195
     

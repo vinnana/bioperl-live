@@ -7,7 +7,7 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 240);
+    test_begin(-tests => 239);
 	
     use_ok('Bio::SeqIO');
 }
@@ -42,7 +42,7 @@ is($seq->species->ncbi_taxid, 6239);
 is($seq->version, 40);
 my ($ann) = $seq->annotation->get_Annotations('seq_update');
 TODO: {
-    local $TODO = 'grabbing seq_update with old SwissProt seqs now failing';
+    local $TODO = 'grabbing seq_update with old SwissProt seqs fails roundtrip tests';
     eval {is($ann->display_text, 35,'operator overloading in AnnotationI is deprecated')};
     ok(!$@);
 }
@@ -56,7 +56,7 @@ for my $date (@dates) {
         is($date, $expdate,'dates');
     } else {
         TODO: {
-        local $TODO = 'grabbing all dates with old SwissProt seqs now failing';
+        local $TODO = 'grabbing seq_update with old SwissProt seqs fails roundtrip tests';
         is($date, $expdate);
         }
     }

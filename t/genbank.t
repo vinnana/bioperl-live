@@ -472,12 +472,12 @@ foreach my $in ('P35527.gb') {
                 }
                     ok ( $parts[1], "$parts[0]" );
             }
-                # elsif ($key eq 'reference') { }
+                
         }
     }
 }
 
-is($ct, 45);
+is($ct, 46);
 
 # bug 2195
     

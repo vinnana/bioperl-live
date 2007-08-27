@@ -466,9 +466,9 @@ sub score {
 
   #$self->score('.') unless @{[$self->get_Annotations('score')]};# make sure we always have something
   #$self->score('.') unless $self->has_tag('score'); # make sure we always have something (but has_tag is deprecated) 
-
-
-  return $self->get_Annotations('score');
+    
+  my ($ann) = $self->get_Annotations('score');
+  $ann ? return $ann->display_text : return;
 }
 
 =head2 phase()
