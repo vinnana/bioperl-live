@@ -818,9 +818,10 @@ sub write_seq {
 	# if there, write the DBSOURCE line
 	foreach my $ref ( $seq->annotation->get_Annotations('dblink') ) {
 	    # if ($ref->comment eq 'DBSOURCE') {
-        my $db = ($ref->database eq 'GenBank') ? '' : $ref->database;
-	    $self->_print("DBSOURCE    $db accession ",
-			  $ref->primary_id, "\n");
+        my $text = $ref->display_text(
+            sub{($ref->database eq 'GenBank' ? '' : $_[0]->database.' ').
+                'accession '.$_[0]->primary_id});
+	    $self->_print("DBSOURCE    $text\n");
 	    # }
 	}
 

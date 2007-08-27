@@ -470,7 +470,7 @@ sub write_seq {
                 $dt.', integrated into UniProtKB/'.$ns,
                 "\\s\+\|\$",80) if $ct == 1;
         $self->_write_line_swissprot_regex("DT   ","DT   ",
-                $dt.", sequence version $update_version.",
+                $dt.", sequence version ".$update_version->display_text,
                 "\\s\+\|\$",80) if $ct == 2;
         $self->_write_line_swissprot_regex("DT   ","DT   ",
                 $dt.", entry version $seq_version.",
