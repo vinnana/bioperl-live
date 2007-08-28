@@ -214,13 +214,15 @@ TODO: {
 }
 
 ok $factory->type('Bio::Annotation::Comment');
-ok $ann = $factory->create_object(-text => 'this is a comment');
+$ann = $factory->create_object(-text => 'this is a comment');
+isa_ok($ann,'Bio::Annotation::Comment');
 like(ref $ann, qr(Bio::Annotation::Comment));
 
 
 # factory guessing the type: Comment
 $factory = Bio::Annotation::AnnotationFactory->new();
-ok $ann = $factory->create_object(-text => 'this is a comment');
+$ann = $factory->create_object(-text => 'this is a comment');
+isa_ok($ann,'Bio::Annotation::Comment');
 like(ref $ann, qr(Bio::Annotation::Comment));
 
 # factory guessing the type: Target
