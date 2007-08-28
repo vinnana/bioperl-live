@@ -359,20 +359,22 @@ sub type {
 
       #set $term to either a cached value, or look up a new one, throwing
       #up if not found
-      $term = $__type_cache{$val} ||= do {
-	my $sofa = Bio::Ontology::OntologyStore->get_instance->get_ontology('Sequence Ontology Feature Annotation');
-	my ($soterm) = $val =~ /^\D+:\d+$/ #does it look like an ident?
-	  ? ($sofa->find_terms(-identifier => $val))[0] #yes, lookup by ident
-	  : ($sofa->find_terms(-name => $val))[0];      #no, lookup by name
-	
-	#throw up if it's not in SOFA
-	unless($soterm){
-	  $self->throw("couldn't find a SOFA term matching type '$val'.");
-	}
-	my $newterm = Bio::Annotation::OntologyTerm->new;
-	$newterm->term($soterm);
-	$newterm;
-      };
+    my $anntext = ref $val ? $val->display_text : $val;
+    if ($__type_cache{$anntext}) {
+        $term = $__type_cache{$anntext};
+    } else {
+        my $sofa = Bio::Ontology::OntologyStore->get_instance->get_ontology('Sequence Ontology Feature Annotation');
+        my ($soterm) = $anntext =~ /^\D+:\d+$/ #does it look like an ident?
+          ? ($sofa->find_terms(-identifier => $anntext))[0] #yes, lookup by ident
+          : ($sofa->find_terms(-name => $anntext))[0];      #no, lookup by name
+        #throw if it's not in SOFA
+        unless($soterm){
+          $self->throw("couldn't find a SOFA term matching type '$val'.");
+        }
+        my $newterm = Bio::Annotation::OntologyTerm->new;
+        $newterm->term($soterm);
+        $term = $newterm;
+      }
     }
     elsif(ref($val) && $val->isa('Bio::Annotation::OntologyTerm')){
       $term = $val;
@@ -415,7 +417,7 @@ sub source {
      
   }
   else {
-    if (!$self->get_Annotations('source')) {
+    if (!defined $self->get_Annotations('source')) {
         $self->source('.');
     }
     return $self->get_Annotations('source');
