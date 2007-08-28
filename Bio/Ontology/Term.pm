@@ -519,8 +519,8 @@ sub has_dblink {
 
 sub add_dblink_context {
     my ($self, $value, $context) = @_;
-    $self->throw("Not a Bio::Annotation::DBLink") unless ref $value && $value->isa('Bio::Annotation::DBLink');
     return unless defined $value;
+    $self->throw("Not a Bio::Annotation::DBLink") unless ref $value && $value->isa('Bio::Annotation::DBLink');
     $self->throw("'all' is a reserved word for context.") if $context eq 'all';
     $context ||= '_default';
     if (! exists($self->{_dblinks}->{$context})) {

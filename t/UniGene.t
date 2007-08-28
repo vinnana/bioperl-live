@@ -112,7 +112,7 @@ is ($version, 1);
 my $ac = $seq->annotation();
 my $simple_ann_object;
 ($simple_ann_object) = $ac->get_Annotations('seqtype');
-ok $simple_ann_object, 'annotation object defined';
+ok defined $simple_ann_object, 'annotation object defined';
 is ($simple_ann_object->value(), 'EST') || diag('seqtype was ' . $simple_ann_object->value);	
 
 # test PERIPHERAL, bug 1708

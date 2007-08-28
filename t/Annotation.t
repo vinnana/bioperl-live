@@ -7,7 +7,7 @@ BEGIN {
     use lib 't/lib';
     use BioperlTest;
     
-    test_begin(-tests => 112);
+    test_begin(-tests => 109);
 	
 	use_ok('Bio::Annotation::Collection');
 	use_ok('Bio::Annotation::DBLink');
@@ -209,21 +209,18 @@ like(ref($ann), qr(Bio::Annotation::OntologyTerm));
 
 TODO: {
 	local $TODO = "Create Annotation::Comment based on parameter only";
-	ok $ann = $factory->create_object(-text => 'this is a comment');
-	like(ref $ann, qr(Bio::Annotation::Comment));
+	$ann = $factory->create_object(-text => 'this is a comment');
+	isa_ok($ann,'Bio::Annotation::Comment');
 }
 
 ok $factory->type('Bio::Annotation::Comment');
 $ann = $factory->create_object(-text => 'this is a comment');
 isa_ok($ann,'Bio::Annotation::Comment');
-like(ref $ann, qr(Bio::Annotation::Comment));
-
 
 # factory guessing the type: Comment
 $factory = Bio::Annotation::AnnotationFactory->new();
 $ann = $factory->create_object(-text => 'this is a comment');
 isa_ok($ann,'Bio::Annotation::Comment');
-like(ref $ann, qr(Bio::Annotation::Comment));
 
 # factory guessing the type: Target
 $factory = Bio::Annotation::AnnotationFactory->new();

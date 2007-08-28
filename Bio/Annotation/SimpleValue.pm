@@ -68,6 +68,8 @@ use strict;
 #  'eq' => sub { "$_[0]" eq "$_[1]" },
 #  fallback => 1
 #  ;
+use overload '""' => sub { $_[0]->throw("Operator overloading of AnnotationI is deprecated") };
+use overload 'eq' => sub { $_[0]->throw("Operator overloading of AnnotationI is deprecated") };
 
 # Object preamble - inherits from Bio::Root::Root
 

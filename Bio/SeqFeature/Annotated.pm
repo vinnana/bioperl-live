@@ -311,7 +311,7 @@ sub seq_id {
       $self->add_Annotation('seq_id', $term);
   }
 
-  $self->seq_id('.') unless ($self->get_Annotations('seq_id')); # make sure we always have something
+  $self->seq_id('.') unless (defined $self->get_Annotations('seq_id')); # make sure we always have something
 
   return $self->get_Annotations('seq_id');
 }
@@ -468,7 +468,7 @@ sub score {
   #$self->score('.') unless $self->has_tag('score'); # make sure we always have something (but has_tag is deprecated) 
     
   my ($ann) = $self->get_Annotations('score');
-  $ann ? return $ann->display_text : return;
+  defined $ann ? return $ann->display_text : return;
 }
 
 =head2 phase()
@@ -537,7 +537,7 @@ sub frame {
       $self->add_Annotation('frame', $term);
   }
 
-  $self->frame('.') unless ($self->get_Annotations('frame')); # make sure we always have something
+  $self->frame('.') unless (defined $self->get_Annotations('frame')); # make sure we always have something
   
   return $self->get_Annotations('frame');
 }
