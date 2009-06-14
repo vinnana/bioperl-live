@@ -304,6 +304,11 @@ BEGIN {
 	     -methylation_site=>\%sites a reference to hash that has
               the position as the key and the type of methylation
               as the value
+             -xln_sub => sub { ($self,$cut) = @_; ...; return $xln_cut },
+              a coderef to a routine that translates the input cut value
+              into Bio::Restriction::Enzyme coordinates
+              ( e.g., for withrefm format, this might be
+               -xln_sub => sub { length( shift()->string ) + shift } )
 
 A Restriction::Enzyme object manages its recognition sequence as a
 Bio::PrimarySeq object.
@@ -323,7 +328,7 @@ sub new {
     my $self = $class->SUPER::new(@args);
 
     my ($name,$enzyme,$site,$seq,$precut, $postcut,$cut,$complementary_cut, $is_prototype, $prototype,
-        $isoschizomers, $meth, $microbe, $source, $vendors, $references, $neo, $recog) =
+        $isoschizomers, $meth, $microbe, $source, $vendors, $references, $neo, $recog, $xln_sub) =
             $self->_rearrange([qw(
                                   NAME
                                   ENZYME
@@ -343,6 +348,7 @@ sub new {
                                   REFERENCES
                                   IS_NEOSCHIZOMER
                                   RECOG
+                                  XLN_SUB
                                  )], @args);
 
     $self->throw('At the minimum, you must define a name and '.
@@ -380,22 +386,52 @@ sub new {
     }
 
     $recog = $self->string; # for length calculations below
+    
+    if ($xln_sub) {
+	$self->warn("Translation subroutine is not a coderef; ignoring") unless
+	    ref($xln_sub) eq 'CODE';
+    }
 
     # cut coordinates
     my ($pc_cut, $pc_comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
 
+    # cut definitions in constructor override any autoset in
+    # site()
+    # definitions in site conform to withrefm coords, translation 
+    # happens here
+
     if (defined $cut) {
-	$self->cut($cut + length $recog);
+	if ($xln_sub) {
+	    $self->cut( $xln_sub->($self, $cut) );
+	}
+	else { # default
+	    $self->cut($cut + length $recog); # xln for withrefm coords
+	}
     }
     elsif ( defined $pc_cut ) {
-	$self->cut($pc_cut + length $recog);
+	if ($xln_sub) {
+	    $self->cut( $xln_sub->($self, $pc_cut) );
+	}
+	else { # default
+	    $self->cut($pc_cut + length $recog); # xln for withrefm coords
+	}
     }
 
     if (defined $complementary_cut) {
-	$self->complementary_cut($complementary_cut);
+	if ($xln_sub) {
+	    $self->complementary_cut($xln_sub->($self,$complementary_cut));
+	}
+	else {
+	    $self->complementary_cut($complementary_cut + length $recog);
+	}
     }
     elsif (defined $pc_comp_cut) {
-	$self->complementary_cut($pc_comp_cut);
+	if ($xln_sub) {
+	    $self->complementary_cut($xln_sub->($self,$pc_comp_cut));
+	}
+	else {
+	    $self->complementary_cut($pc_comp_cut + length $recog);
+	}
     }
 
     $is_prototype && $self->is_prototype($is_prototype);
@@ -418,6 +454,7 @@ sub new {
 	$self->others($re2);
     }
 	
+
     return $self;
 }
 
@@ -499,13 +536,6 @@ ACCTGC(4/8) is at 6+4 i.e. 10.
 ** This is the main setable method for the recognition site.
 
 =cut
-
-# big time makeover here /maj
-# setting site() can also set cut(), complementary_cut()
-# too much bullshit behind the scenes in cut(), complementary_cut()
-#  -- padding happens in these
-# revcom stuff is bizarre
-
 
 sub site {
     my ($self, $site) = @_;
@@ -652,17 +682,19 @@ sub cut {
              unless $value =~ /[-+]?\d+/;
          $self->{'_cut'} = $value;
 
-         $self->complementary_cut(length ($self->seq->seq) - $value )
-             if $self->type eq 'II';
 	 # padding requirements are factored out/maj
 #          if (length ($self->{_site}) < $value ) {
 #              my $pad_length = $value - length $self->{_site};
 #              $self->{_site} .= 'N' x $pad_length;
 #          }
-	 # add the caret to the site attribute.
-         $self->{_site} =
-             substr($self->{_site}, 0, $value). '^'. substr($self->{_site}, $value)
-                 unless $self->{_site} =~ /\^/;
+	 # add the caret to the site attribute only if internal /maj
+	 if ( ($self->{_site} !~ /\^/) && ($value <= length ($self->{_site}))) {
+	     $self->{_site} =
+		 substr($self->{_site}, 0, $value). '^'. substr($self->{_site}, $value);
+	 }
+	 # auto-set comp cut only if cut site is inside the recog site./maj
+	 $self->complementary_cut(length ($self->seq->seq) - $value )
+	     if (($self->{_site} =~ /\^/) && ($self->{_type} eq 'II'));
      }
      # return undef if not defined yet, not 0 /maj
      return $self->{'_cut'};
