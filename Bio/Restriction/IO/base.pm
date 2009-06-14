@@ -295,26 +295,25 @@ sub _coordinate_shift_to_cut {
 =head2 _make_multisites
 
  Title   : _make_multisites
- Usage   : $self->_make_multisites($collection, $first_enzyme, \@sites, \@mets)
- Function: 
-
-           Bless a Bio::Restriction::Enzyme (which is already part of
-           the collection object) into
+ Usage   : $self->_make_multisites($first_enzyme, \@sites, \@mets)
+ Function: Bless a Bio::Restriction::Enzyme  into
            Bio::Restriction::Enzyme::MultiSite and clone it as many
-           times as there are alternative sites. The new objects are
-           added into the collection and into others list of sister
-           objects.
-
+           times as there are alternative sites.
  Returns : nothing, does in place editing
- Args    : 1. a Bio::Restriction::EnzymeCollection
-           2. a Bio::Restriction::Enzyme
-           3. reference to an array of recognition site strings
-           4. reference to an array of methylation code strings, optional
+ Args    : 1. a Bio::Restriction::Enzyme
+           2. reference to an array of recognition site strings
+           3. reference to an array of methylation code strings, optional
 
 =cut
 
+# what is the point of the collection object here? The root Enzyme object
+# is added to the collection elsewhere, and the subordinate Enzyme objects
+# are accessed through others(). They shouldn't go in the Collection anyway
+# since they don't really represent entire enzymes, only a part of the 
+# behavior of a single enzyme. /maj
+# removed the enzyme collection from arg list /maj
 sub _make_multisites {
-    my ($self, $renzs, $re, $sites, $meths) = @_;
+    my ($self, $re, $sites, $meths) = @_;
 
     bless $re, 'Bio::Restriction::Enzyme::MultiSite';
 
@@ -326,6 +325,14 @@ sub _make_multisites {
         my $site = @{$sites}[$count];
 	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
 	
+	# set the site attribute
+	$re2->site($recog);
+
+	# set the recog attribute (which will make the regexp transformation
+	# if necessary:
+	$re2->recog($recog);
+	$recog = $re2->string;
+
         my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
 
         if ($cut) {
@@ -333,14 +340,6 @@ sub _make_multisites {
             $re2->complementary_cut($comp_cut + length $recog);
 	}
 	
-	# set the site attribute
-	$re2->site($recog);
-
-	# set the recog attribute (which will make the regexp transformation
-	# if necessary:
-	$re2->recog($recog);
-
-
         if ($meths and @$meths) {
             $re2->purge_methylation_sites;
             $re2->methylation_sites($self->_meth($re2, @{$meths}[$count]));
@@ -360,20 +359,17 @@ sub _make_multisites {
 =head2 _make_multicuts
 
  Title   : _make_multicuts
- Usage   : $self->_make_multicuts($collection, $first_enzyme, $precuts)
+ Usage   : $self->_make_multicuts($first_enzyme, $precuts)
  Function: 
 
-           Bless a Bio::Restriction::Enzyme (which is already part of
-           the collection object) into
+           Bless a Bio::Restriction::Enzyme into
            Bio::Restriction::Enzyme::MultiCut and clone it. The precut
            string is processed to replase the cut sites in the cloned
-           object which is added into the collection. Both object
-           refere to each other through others() method.
+           object. Both objects refer to each other through others() method.
 
  Returns : nothing, does in place editing
- Args    : 1. a Bio::Restriction::EnzymeCollection
-           2. a Bio::Restriction::Enzyme
-           3. precut string, e.g. '12/7'
+ Args    : 1. a Bio::Restriction::Enzyme
+           2. precut string, e.g. '12/7'
 
 
 The examples we have of multiply cutting enzymes cut only four
@@ -383,8 +379,15 @@ BEFORE the start of the recognition site, i.e. negative positions.
 
 =cut
 
+# what is the point of the collection object here? The root Enzyme object
+# is added to the collection elsewhere, and the subordinate Enzyme objects
+# are accessed through others(). They shouldn't go in the Collection anyway
+# since they don't really represent entire enzymes, only a part of the 
+# behavior of a single enzyme. /maj
+# removed the enzyme collection from arg list /maj
+
 sub _make_multicuts {
-    my ($self, $renzs, $re, $precut) = @_;
+    my ($self, $re, $precut) = @_;
 
     bless $re, 'Bio::Restriction::Enzyme::MultiCut';
  

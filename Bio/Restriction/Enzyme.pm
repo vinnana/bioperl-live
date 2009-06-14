@@ -243,6 +243,7 @@ Rob Edwards, redwards@utmem.edu
 
 Heikki Lehvaslaiho, heikki-at-bioperl-dot-org
 Peter Blaiklock, pblaiklo@restrictionmapper.org
+Mark A. Jensen, maj-at-fortinbras-dot-us
 
 =head1 COPYRIGHT
 
@@ -314,17 +315,22 @@ things about the sequence, such as palindromic, size, etc.
 
 =cut
 
+# do all cut/comp cut setting within the constructor
+# new args
+
 sub new {
     my($class, @args) = @_;
     my $self = $class->SUPER::new(@args);
 
-    my ($name,$enzyme,$site,$seq,$cut,$complementary_cut, $is_prototype, $prototype,
+    my ($name,$enzyme,$site,$seq,$precut, $postcut,$cut,$complementary_cut, $is_prototype, $prototype,
         $isoschizomers, $meth, $microbe, $source, $vendors, $references, $neo, $recog) =
             $self->_rearrange([qw(
                                   NAME
                                   ENZYME
                                   SITE
                                   SEQ
+                                  PRECUT
+                                  POSTCUT
                                   CUT
                                   COMPLEMENTARY_CUT
                                   IS_PROTOTYPE
@@ -339,22 +345,59 @@ sub new {
                                   RECOG
                                  )], @args);
 
-    $self->{_isoschizomers} = ();
-    $self->{_methylation_sites} = {};
-    $self->{_vendors} = ();
-    $self->{_references} = ();
-
-    $name && $self->name($name);
-    $enzyme && $self->name($enzyme);
-    $site && $self->site($site);
-    $seq && $self->site($seq);
     $self->throw('At the minimum, you must define a name and '.
                  'recognition site for the restriction enzyme')
-        unless $self->{'_name'} && $self->{'_seq'};
+        unless (($name || $enzyme) && ($site || $recog || $seq));
 
+    $self->{_isoschizomers} = [];
+    $self->{_methylation_sites} = {};
+    $self->{_vendors} = [];
+    $self->{_references} = [];
 
-    defined $cut && $self->cut($cut);
-    $complementary_cut && $self->complementary_cut($complementary_cut);
+    # enzyme name
+    $enzyme && $self->name($enzyme);
+    $name && $self->name($name);
+
+    # site
+    #
+    # note that the site() setter with automatically set
+    # cut(), complementary_cut(), if the cut site is indicated
+    # in $site with '^' /maj
+
+    if ($site) {
+	$self->site($site);
+    }
+    else {
+	$seq && $self->site($seq);
+    }
+
+    if ($recog) {
+	$self->recog($recog);
+    }
+    else {
+	$seq && $self->recog($seq);
+	$site && $self->recog($site);
+    }
+
+    $recog = $self->string; # for length calculations below
+
+    # cut coordinates
+    my ($pc_cut, $pc_comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
+
+    if (defined $cut) {
+	$self->cut($cut + length $recog);
+    }
+    elsif ( defined $pc_cut ) {
+	$self->cut($pc_cut + length $recog);
+    }
+
+    if (defined $complementary_cut) {
+	$self->complementary_cut($complementary_cut);
+    }
+    elsif (defined $pc_comp_cut) {
+	$self->complementary_cut($pc_comp_cut);
+    }
+
     $is_prototype && $self->is_prototype($is_prototype);
     $prototype && $self->prototype($prototype);
     $isoschizomers && $self->isoschizomers($isoschizomers);
@@ -364,8 +407,17 @@ sub new {
     $vendors && $self->vendors($vendors);
     $references && $self->references($references);
     $neo && $self->is_neoschizomer($neo);
-    $recog && $self->recog($recog);
 
+    # create multicut enzymes here if $precut defined
+    if (defined $precut) {
+	bless $self, 'Bio::Restriction::Enzyme::MultiCut';
+	my ($pc_cut, $pc_comp_cut) = $precut =~ /(-?\d+)\/(-?\d+)/;
+	my $re2 = $self->clone;
+	$re2->cut(-$pc_cut);
+	$re2->complementary_cut(-$pc_comp_cut);
+	$self->others($re2);
+    }
+	
     return $self;
 }
 
@@ -448,6 +500,13 @@ ACCTGC(4/8) is at 6+4 i.e. 10.
 
 =cut
 
+# big time makeover here /maj
+# setting site() can also set cut(), complementary_cut()
+# too much bullshit behind the scenes in cut(), complementary_cut()
+#  -- padding happens in these
+# revcom stuff is bizarre
+
+
 sub site {
     my ($self, $site) = @_;
     if ( $site ) {
@@ -500,6 +559,8 @@ enzymes they are not!
 See also L<site|site> above.
 
 =cut
+
+# dodgy. /maj
 
 sub revcom_site {
     my ($self, $site)=@_;
@@ -593,16 +654,18 @@ sub cut {
 
          $self->complementary_cut(length ($self->seq->seq) - $value )
              if $self->type eq 'II';
-
-         if (length ($self->{_site}) < $value ) {
-             my $pad_length = $value - length $self->{_site};
-             $self->{_site} .= 'N' x $pad_length;
-         }
+	 # padding requirements are factored out/maj
+#          if (length ($self->{_site}) < $value ) {
+#              my $pad_length = $value - length $self->{_site};
+#              $self->{_site} .= 'N' x $pad_length;
+#          }
+	 # add the caret to the site attribute.
          $self->{_site} =
              substr($self->{_site}, 0, $value). '^'. substr($self->{_site}, $value)
                  unless $self->{_site} =~ /\^/;
      }
-     return $self->{'_cut'} || 0;
+     # return undef if not defined yet, not 0 /maj
+     return $self->{'_cut'};
 }
 
 =head2 cuts_after
@@ -644,7 +707,8 @@ sub complementary_cut {
             unless $num =~ /[-+]?\d+/;
         $self->{'_rc_cut'} = $num;
     }
-    return $self->{'_rc_cut'} || 0;
+    # return undef, not 0, if not yet defined /maj
+    return $self->{'_rc_cut'};
 }
 
 

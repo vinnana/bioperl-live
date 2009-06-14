@@ -176,6 +176,7 @@ Steve Chervitz, sac@bioperl.org
 =head1 CONTRIBUTORS
 
 Heikki Lehvaslaiho, heikki-at-bioperl-dot-org
+Mark A. Jensen, maj-at-fortinbras-dot-us
 
 =head1 COPYRIGHT
 

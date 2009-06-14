@@ -138,43 +138,75 @@ sub read {
 
 	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
 
-        my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
-
-	# when enz is constructed, site() will contain original characters,
-	# but recog() will contain a regexp if required.../maj
-        my $re = Bio::Restriction::Enzyme->new(-name=>$name,
-					       -site => $recog,
-					       -recog => $recog
-	    );
-        if ($cut) {
-            $re->cut($cut + length $recog);
-	    $re->complementary_cut($comp_cut + length $recog);
-        }
 
         #
         # prototype / isoschizomers
         #
 
         my ($isoschizomers) = $entry =~ /<2>([^\n]+)/;
+	my @isos = split(/\,/,$isoschizomers);
+	my $is_prototype = (@isos ? 1 : 0);
 	
-        if ($isoschizomers) {
-            # bug 2179
-            # here's the trick; if there are no enzymes here, the enzyme in <1>
-            # is the prototype (see withref format for this).  However, one
-            # can't unequivicably assign prototype based on the presence of
-            # enzymes or which one is first without building a logic kit on
-            # determining how these are assigned.
+#         if ($isoschizomers) {
+#             # bug 2179
+#             # here's the trick; if there are no enzymes here, the enzyme in <1>
+#             # is the prototype (see withref format for this).  However, one
+#             # can't unequivocally assign prototype based on the presence of
+#             # enzymes or which one is first without building a logic kit on
+#             # determining how these are assigned.
             
-            # we could add in a hook to check an outside prototype file here
-            # at some point; for now we'll just warn if is_prototype() is called
-            my @isos = split(/\,/, $isoschizomers);
-            $re->isoschizomers(@isos);
-        } else {
-            $re->is_prototype(1);
-        }
+#             # we could add in a hook to check an outside prototype file here
+#             # at some point; for now we'll just warn if is_prototype() is called
+#             @isos = split(/\,/, $isoschizomers);
+#             $re->isoschizomers(@isos);
+#         } else {
+#             $re->is_prototype(1);
+#         }
 
         #
-        # methylation
+        # microbe
+        #
+        my ($microbe) = $entry =~ /<5>([^\n]+)/;
+#        $re->microbe($microbe) if $microbe;
+
+        #
+        # source
+        #
+        my ($source) = $entry =~ /<6>([^\n]+)/;
+ #       $re->source($source) if $source;
+
+        #
+        # vendors
+        #
+        my ($vendors) = $entry =~ /<7>([^\n]+)/;
+	my @vendors = split(/ */, $vendors);
+#        $re->vendors(split / */, $vendors) if $vendors;
+
+        #
+        # references
+        #
+        my ($refs) = $entry =~ /<8>(.+)/s;
+	my @refs = map {split /\n+/} $refs;
+#        $re->references(map {split /\n+/} $refs) if $refs;
+
+	       
+	# when enz is constructed, site() will contain original characters,
+	# but recog() will contain a regexp if required.../maj
+        my $re = Bio::Restriction::Enzyme->new(
+	    -name          => $name,
+	    -site          => $recog,
+	    -recog         => $recog,
+	    -precut        => $precut,
+	    -postcut       => $postcut,
+	    -is_prototype  => $is_prototype,
+	    -isoschizomers => [@isos],
+	    -source        => $source,
+	    -vendors       => [@vendors],
+	    -references    => [@refs]
+	    );
+
+        #
+        # methylation: easier to set here during parsing/maj
         #
 
         my ($meth) = $entry =~ /<4>([^\n]+)/;
@@ -197,38 +229,20 @@ sub read {
         }
 
         #
-        # microbe
-        #
-        my ($microbe) = $entry =~ /<5>([^\n]+)/;
-        $re->microbe($microbe) if $microbe;
-
-        #
-        # source
-        #
-        my ($source) = $entry =~ /<6>([^\n]+)/;
-        $re->source($source) if $source;
-
-        #
-        # vendors
-        #
-        my ($vendors) = $entry =~ /<7>([^\n]+)/;
-        $re->vendors(split / */, $vendors) if $vendors;
-
-        #
-        # references
-        #
-        my ($refs) = $entry =~ /<8>(.+)/s;
-        $re->references(map {split /\n+/} $refs) if $refs;
-
-
-        #
         # create special types of Enzymes
-        #
-        $self->_make_multisites($renzs, $re, \@sequences, \@meths) if @sequences;
+	# (because of object cloning in _make_multisites, this happens
+	#  after everything else is set /maj)
+        # (with the removal of the collection from the arglist, this
+	# call (or its code) could now be placed in the constructor,
+	# which is safer (since this has to happen last), 
+	# but it requires the methylation info, which 
+	# is more natural to get out here in the parsing./maj
 
-        $self->_make_multicuts($renzs, $re, $precut) if $precut;
-	       
+        $self->_make_multisites($re, \@sequences, \@meths) if @sequences;
+
         $renzs->enzymes($re);
+
+
     }
 
     return $renzs;
