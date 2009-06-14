@@ -798,7 +798,6 @@ sub _cuts {
         my @all_cuts;
         my @others = $enz->others if $enz->can("others");
         foreach my $enzyme ($enz, @others) {
-            my ($beforeseq, $afterseq)=$self->_enzyme_sites($enzyme);
             # cut the sequence
 
             # if the enzyme is ambiguous we need to use a regexp to find the cut site
@@ -809,24 +808,34 @@ sub _cuts {
             # We will push everything into @all_cuts, and then deconvolute it
             # and figure everything else out from there.
 	
-            my $cut_positions;
-            if ($enzyme->is_ambiguous) {
-	        $cut_positions= $self->_ambig_cuts($beforeseq, $afterseq, $target_seq, $enzyme);
-            } else {
-	        $cut_positions= $self->_nonambig_cuts($beforeseq, $afterseq, $target_seq, $enzyme);
-            }
+            my $cut_positions = $self->_make_cuts($target_seq, $enzyme);
 
             push @all_cuts, @$cut_positions;
 
+	    #### need to refactor circular handling....
+	    ####
+
             # deal with is_circular sequences
             if ($self->{'_seq'}->is_circular) {
-                $cut_positions=$self->_circular($beforeseq, $afterseq, $enzyme);
-                push @all_cuts, @$cut_positions;
+		$self->warn('not dealing with circular seqs currently');
+#                $cut_positions=$self->_circular($beforeseq, $afterseq, $enzyme);
+#               push @all_cuts, @$cut_positions;
             }
 
             # we need to deal with non-palindromic enzymes separately
+	    
+	    # so _non_pal_enz *only* delivers minus strand cuts, but in
+	    # plus strand coords./maj
+	    # rewrite using the new "comp" arg to the cutting methods..
+	    # this is still far from ideal
+	    # (need to handle circularity separately, then)
+	    # /maj
+
             unless ($enzyme->is_palindromic) {
-   	        $cut_positions=$self->_non_pal_enz($target_seq, $enzyme);
+		# do all of above with explicit use of the 
+		# enzyme's 'complementary_cut'...
+
+		$cut_positions = $self->_make_cuts($target_seq, $enzyme, 'COMP');
                 push @all_cuts, @$cut_positions;
             }
         }
@@ -868,39 +877,46 @@ sub _cuts {
  Title     : _enzyme_sites
  Function  : An internal method to figure out the two sides of an enzyme
  Returns   : The sequence before the cut and the sequence after the cut
- Arguments : A Bio::Restriction::Enzyme object
-
+ Arguments : A Bio::Restriction::Enzyme object,
+             $comp : boolean, calculate based on $enz->complementary_cut()
+                     if true, $enz->cut() if false
+ NOW DEPRECATED/maj
 =cut
 
 sub _enzyme_sites {
-    my ($self, $enz)=@_;
+    my ($self, $enz, $comp )=@_;
     # get the cut site
     # I have reworked this so that it uses $enz->cut to get the site
 
-    my $site=$enz->cut;
+    my $site= ( $comp ? $enz->complementary_cut : $enz->cut );
     # split it into the two fragments for the sequence before and after.
     $site=0 unless defined $site;
-    # The following should not be an exception, both Type I and Type III
-	 # enzymes cut outside of their recognition sequences
-    #if ($site < 0 || $site > length($enz->string)) {
-    #   $self->throw("This is (probably) not your fault.\nGot a cut site of $site and a     # sequence of ".$enz->string);
-    # }
 
     # the default values just stop an error from an undefined
     # string. But they don't affect the split.
     my ($beforeseq, $afterseq)= ('.', '.');
 
-    if ($site == 0) {
+    # extra-site cutting
+    # the before seq is going to be the entire site
+    # the after seq is empty
+    # BUT, need to communicate how to cut within the sample sequence
+    #  relative to the end of the site (do through $enz->cut), and
+    # ALSO, need to check length of sample seq so that if cut falls
+    #  outside the input sequence, we have a warning/throw. /maj
+
+    # pre-site cutting
+    # need to handle negative site numbers
+
+    if ($site <= 0) { # <= to handle pre-site cutting
        $afterseq=$enz->string;
     }
-    elsif ($site == $enz->seq->length) {
+    elsif ($site >= $enz->seq->length) { # >= to handle extrasite cutters/maj
        $beforeseq=$enz->string;
     }
-    else {
+    else {  # $site < $enz->seq->length
        $beforeseq=$enz->seq->subseq(1, $site);
        $afterseq=$enz->seq->subseq($site+1, $enz->seq->length);
     }
-
     # if the enzyme is ambiguous we need to convert this into a perl string
     if ($enz->is_ambiguous) {
        $beforeseq=$self->_expanded_string($beforeseq);
@@ -915,8 +931,11 @@ sub _enzyme_sites {
 
   Title    : _non_pal_enz
   Function : Analyses non_palindromic enzymes for cuts in both ways
+             (in fact, delivers only minus strand cut positions in the 
+              plus strand coordinates/maj)
   Returns  : A reference to an array of cut positions
   Arguments: The sequence to check and the enzyme object
+  NOW DEPRECATED/maj
 
 =cut
 
@@ -924,22 +943,37 @@ sub _non_pal_enz {
     my ($self, $target_seq, $enz) =@_;
     # add support for non-palindromic sequences
     # the enzyme is not the same forwards and backwards
+
     my $site=$enz->complementary_cut;
+    # complementary_cut is in plus strand coordinates
+
     # we are going to rc the sequence, so complementary_cut becomes length-complementary_cut
 
-    my ($beforeseq, $afterseq)=('.', '.');
+    # I think this is wrong; cut sites are a matter of position with respect
+    # to the plus strand: the recognition site is double stranded and 
+    # directly identifiable on the plus strand sequence. /maj
 
+    # what really needs doing is to keep track of plus strand and minus strand
+    # nicks separately./maj
+
+   my ($beforeseq, $afterseq)=('.', '.');
+
+    # now, for extra-site cuts, $site > length...so...?/maj
     my $new_left_cut=$enz->seq->length-$site;
     # there is a problem when this is actually zero
+
     if ($new_left_cut == 0) {$afterseq=$enz->seq->revcom->seq}
     elsif ($new_left_cut == $enz->seq->length) {$beforeseq=$enz->seq->revcom->seq}
     else {
+	# this can't be right./maj
        $beforeseq=$enz->seq->revcom->subseq(1, ($enz->seq->length-$site));
        $afterseq=$enz->seq->revcom->subseq(($enz->seq->length-$site), $enz->seq->length);
-     }
+    }
+    
+    # do this correctly, in the context of the current code design,
+    # by providing a "complement" argument to _ambig_cuts and _nonambig_cuts,
+    # use these explicitly rather than this wrapper./maj
 
-    # complementary cut is the position on the forward strand
-    # correct for reverse strand - I think this is right
     my $results=[];
     if ($enz->is_ambiguous) {
           $results= $self->_ambig_cuts($beforeseq, $afterseq, $target_seq, $enz);
@@ -951,9 +985,9 @@ sub _non_pal_enz {
     my $more_results=[];
     $more_results=$self->_circular($beforeseq, $afterseq, $enz) 
         if ($self->{'_seq'}->is_circular);
-    push my @all_cuts, (@$more_results, @$results);
-    return \@all_cuts;
-} 
+
+    return [@$more_results, @$results];
+}
 
 =head2 _ambig_cuts
 
@@ -966,12 +1000,17 @@ sub _non_pal_enz {
 
 =cut
 
-sub _ambig_cuts {
+# we have problems here when the cut is extrasite: $beforeseq/$afterseq do
+# not define the cut site then! I am renaming this to _ambig_cuts_depr,
+# providing a more compact method that correctly handles extrasite cuts
+# below /maj
+
+sub _ambig_cuts_depr {
     my ($self, $beforeseq, $afterseq, $target_seq, $enz) = @_;
     
     # cut the sequence. This is done with split so we can use
     # regexp. 
-    
+    $target_seq = uc $target_seq;
     my @cuts = split /($beforeseq)($afterseq)/i, $target_seq;
     # now the array has extra elements --- the before and after!
     # we have:
@@ -1040,6 +1079,19 @@ sub _ambig_cuts {
     return \@cut_positions;
 }
 
+# new version/maj
+
+sub _ambig_cuts {
+    my ($self, $before, $after, $target, $enz, $comp) = @_;
+    my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
+    local $_ = uc $target;
+    my @cuts;
+    my $recog = $enz->recog;
+    my $site_re = qr/($recog)/;
+    push @cuts, pos while (/$site_re/g);
+    $_ = $_ - length($enz->recog) + $cut_site for @cuts;
+    return [@cuts];
+}
 
 =head2 _nonambig_cuts
 
@@ -1055,26 +1107,69 @@ with ambiguous sequences
 
 =cut
 
-sub _nonambig_cuts {
-    my ($self, $beforeseq, $afterseq, $target_seq, $enz) = @_;
+# now, DO want the enzyme object.../maj
 
+sub _nonambig_cuts {
+    my ($self, $beforeseq, $afterseq, $target_seq, $enz, $comp) = @_;
+    my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
     if ($beforeseq eq ".") {$beforeseq = ''}
     if ($afterseq  eq ".") {$afterseq  = ''}
-    my $index_posn=index($target_seq, $beforeseq.$afterseq);
+    $target_seq = uc $target_seq;
+#    my $index_posn=index($target_seq, $beforeseq.$afterseq);
+    my $index_posn=index($target_seq, $enz->recog);
     return [] if ($index_posn == -1); # there is no match to the sequence
 
     # there is at least one cut site
     my @cuts;
     while ($index_posn > -1) {
-	  push (@cuts, $index_posn+length($beforeseq));
-	  $index_posn=index($target_seq, $beforeseq.$afterseq, $index_posn+1);
+	# extrasite cutting issue here...
+	# think we want $index_posn+$enz->cut
+#	  push (@cuts, $index_posn+length($beforeseq));
+	  push (@cuts, $index_posn+$cut_site);
+#	  $index_posn=index($target_seq, $beforeseq.$afterseq, $index_posn+1);
+	  $index_posn=index($target_seq, $enz->recog, $index_posn+1);
     }
 
     return \@cuts;
 }
 
+=head2 _make_cuts
 
-=head2 _mulitple_cuts
+ Title   : _make_cuts
+ Usage   : $an->_make_cuts( $target_sequence, $enzyme, $complement_q )
+ Function: Returns an array of cut sites on target seq, using enzyme
+           on the plus strand ($complement_q = 0) or minus strand
+           ($complement_q = 1)
+ Returns : array of scalar integers
+ Args    : sequence string, B:R:Enzyme object, boolean
+
+=cut
+ 
+sub _make_cuts {
+    my ($self, $target, $enz, $comp) = @_;
+    my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
+    local $_ = uc $target;
+    my @cuts;
+    my $recog = $enz->recog;
+
+    if ( $recog =~ /[^\w]/ ) { # "ambig"
+	my $site_re = qr/($recog)/;
+	push @cuts, pos while (/$site_re/g);
+	$_ = $_ - length($enz->recog) + $cut_site for @cuts;
+    }
+    else { # "nonambig"
+	my $index_posn=index($_, $recog);
+	return [] if ($index_posn == -1); # there is no match to the sequence
+	# there is at least one cut site
+	while ($index_posn > -1) {
+	  push (@cuts, $index_posn+$cut_site);
+	  $index_posn=index($_, $recog, $index_posn+1);
+	}
+    }
+    return [@cuts];
+}
+
+=head2 _multiple_cuts
 
  Title     : _multiple_cuts
  Function  : Figures out multiple digests

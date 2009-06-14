@@ -396,8 +396,11 @@ sub _make_multicuts {
     
     # Pads the front to prevent detection of sites when the 1st
     # cut is off the end of the sequence.
-    my $site = $re->site;
-    $re->site(('N' x abs($cut)) . $site);
+
+    # resetting the site this way trashes the original cut site;
+    # there isn't a reason to do it with the new patches. /maj
+#    my $site = $re->site;
+#    $re->site(('N' x abs($cut)) . $site);
 
     my $re2 = $re->clone;
 

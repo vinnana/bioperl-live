@@ -115,17 +115,19 @@ sub read {
         my ($name) = $entry =~ /^(\S+)/;
         my ($site) = $entry =~ /\<3\>([^\n]+)/;
 
-
+#	$DB::single = 1 if $name =~ /AjuI/;
         if ( ! defined $site || $site eq '' or $site eq '?') {
             $self->warn("$name: no site. Skipping") if $self->verbose > 1;
             next;
         }
 
-        my $precut;
-        if ($site =~ m/^\((\w+\/\w+)\)\w+\((\w+\/\w+)\)/) {
-            $precut = $1;
-            $site =~ s/\($precut\)//;
-        }
+
+	# this regexp now parses all possible components
+	# $1 : (s/t) or undef 
+	# $2 : [site]
+	# $3 : (m/n) or undef /maj
+	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
+	$site =~ s/\($precut\)//;	
 
         # there are a couple of sequences that have multiple
         # recognition sites eg M.PhiBssHII: ACGCGT,CCGCGG,RGCGCY,RCCGGY,GCGCGC
@@ -133,7 +135,7 @@ sub read {
 
         my @sequences;
         if ($site =~ /\,/) {
-            @sequences = split /\,/, $site;
+            @sequences = split (/\,/, $site);
             $site=shift @sequences;
         }
 
@@ -141,7 +143,8 @@ sub read {
         ($site, $cut, $comp_cut) = $self->_cuts_from_site($site);
 
         my $re = Bio::Restriction::Enzyme->new(-name=>$name,
-                                              -site => $site
+                                              -site => $site,
+					       -recog => $recog
                                              );
         $renzs->enzymes($re);
 

@@ -272,7 +272,7 @@ use strict;
 use Bio::PrimarySeq;
 
 use Data::Dumper;
-
+use Tie::RefHash;
 use vars qw (%TYPE);
 use base qw(Bio::Root::Root Bio::Restriction::EnzymeI);
 
@@ -319,7 +319,7 @@ sub new {
     my $self = $class->SUPER::new(@args);
 
     my ($name,$enzyme,$site,$seq,$cut,$complementary_cut, $is_prototype, $prototype,
-        $isoschizomers, $meth, $microbe, $source, $vendors, $references, $neo) =
+        $isoschizomers, $meth, $microbe, $source, $vendors, $references, $neo, $recog) =
             $self->_rearrange([qw(
                                   NAME
                                   ENZYME
@@ -336,6 +336,7 @@ sub new {
                                   VENDORS
                                   REFERENCES
                                   IS_NEOSCHIZOMER
+                                  RECOG
                                  )], @args);
 
     $self->{_isoschizomers} = ();
@@ -363,6 +364,7 @@ sub new {
     $vendors && $self->vendors($vendors);
     $references && $self->references($references);
     $neo && $self->is_neoschizomer($neo);
+    $recog && $self->recog($recog);
 
     return $self;
 }
@@ -748,7 +750,28 @@ sub string {
     shift->{'_seq'}->seq;
 }
 
+=head2 recog
 
+ Title   : recog
+ Usage   : $enz->recog($recognition_sequence)
+ Function: Gets/sets the pure recognition site, which remains unpadded 
+           by Ns in the case of extra-site cutters [unlike site() and
+           string()]. As for string(), the cut indicating carets (^)
+           are expunged.
+ Example : 
+ Returns : value of recog (a scalar)
+ Args    : on set, new value (a scalar or undef, optional)
+
+=cut
+
+sub recog{
+    my $self = shift;
+    my $recog = shift;
+    return $self->{'recog'} unless $recog;
+    $recog =~ s/\^//g;
+    $recog = _expand($recog) if $recog =~ /[^ATGC]/;
+    return $self->{'recog'} = $recog;
+}
 
 =head2 revcom
 
@@ -1395,7 +1418,9 @@ Todo: local code cuts circular references.
 
 =cut
 
-sub clone {
+# there's some issue here; deprecating and rolling another below/maj
+
+sub clone_depr {
     my ($self, $this) = @_;
 
     eval { require Storable; };
@@ -1438,6 +1463,89 @@ sub clone {
     }
 }
 
+sub clone {
+    my $self = shift;
+    my ($this, $visited) = @_;
+    unless (defined $this) {
+	my %h;
+	tie %h, 'Tie::RefHash';
+	my $visited = \%h;
+	return $self->clone($self, $visited);
+    }
+    my $thing;
+    for ($this) {
+	if (ref) {
+	    return $visited->{$this} if $visited->{$this};
+	}
+	# scalar
+	(!ref) && do {
+	    $thing = $this;
+	    last;
+	};
+	# object
+	(ref =~ /^Bio::/) && do {
+	    $thing = {};
+	    bless($thing, ref);
+	    foreach my $attr (keys %{$_}) {
+		$thing->{$attr} = (defined $_->{$attr} ? $self->clone($_->{$attr},$visited) : undef );
+	    }
+	    last;
+	};
+	(ref eq 'ARRAY') && do {
+	    $thing = [];
+	    foreach my $elt (@{$_}) {
+		push @$thing, (defined $elt ? $self->clone($elt,$visited) : undef);
+	    }
+	    last;
+	};
+	(ref eq 'HASH') && do {
+	    $thing = {};
+	    foreach my $key (%{$_}) {
+		$thing->{$key} = (defined $_->{key} ? $self->clone( $_->{$key},$visited) : undef );
+	    }
+	    last;
+	};
+	(ref eq 'SCALAR') && do {
+	    $thing = ${$_};
+	    $thing = \$thing;
+	    last;
+	};
+    }
+    $visited->{$this} = $thing if ref($thing);
+    return $thing;
+}
+
+
+
+=head2 _expand
+
+ Title     : _expand
+ Function  : Expand nucleotide ambiguity codes to their representative letters
+ Returns   : The full length string
+ Arguments : The string to be expanded.
+
+Stolen from the original RestrictionEnzyme.pm
+
+=cut
+
+
+sub _expand {
+    my $str = shift;
+
+    $str =~ s/N|X/\./g;
+    $str =~ s/R/\[AG\]/g;
+    $str =~ s/Y/\[CT\]/g;
+    $str =~ s/S/\[GC\]/g;
+    $str =~ s/W/\[AT\]/g;
+    $str =~ s/M/\[AC\]/g;
+    $str =~ s/K/\[TG\]/g;
+    $str =~ s/B/\[CGT\]/g;
+    $str =~ s/D/\[AGT\]/g;
+    $str =~ s/H/\[ACT\]/g;
+    $str =~ s/V/\[ACG\]/g;
+
+    return $str;
+}
 
 1;
 
