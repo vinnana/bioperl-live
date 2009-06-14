@@ -1140,7 +1140,8 @@ sub _nonambig_cuts {
  Usage   : $an->_make_cuts( $target_sequence, $enzyme, $complement_q )
  Function: Returns an array of cut sites on target seq, using enzyme
            on the plus strand ($complement_q = 0) or minus strand
-           ($complement_q = 1)
+           ($complement_q = 1); follows Enzyme objects in
+           $enzyme->others()
  Returns : array of scalar integers
  Args    : sequence string, B:R:Enzyme object, boolean
 
@@ -1148,24 +1149,29 @@ sub _nonambig_cuts {
  
 sub _make_cuts {
     my ($self, $target, $enz, $comp) = @_;
-    my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
     local $_ = uc $target;
     my @cuts;
-    my $recog = $enz->recog;
+    my @enzs = map { $_ || () } ($enz, $enz->can('others') ? $enz->others : ());
+    foreach $enz (@enzs) {
+	my $recog = $enz->recog;
+	my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
+	my @these_cuts;
 
-    if ( $recog =~ /[^\w]/ ) { # "ambig"
-	my $site_re = qr/($recog)/;
-	push @cuts, pos while (/$site_re/g);
-	$_ = $_ - length($enz->recog) + $cut_site for @cuts;
-    }
-    else { # "nonambig"
-	my $index_posn=index($_, $recog);
-	return [] if ($index_posn == -1); # there is no match to the sequence
-	# there is at least one cut site
-	while ($index_posn > -1) {
-	  push (@cuts, $index_posn+$cut_site);
-	  $index_posn=index($_, $recog, $index_posn+1);
+	if ( $recog =~ /[^\w]/ ) { # "ambig"
+	    my $site_re = qr/($recog)/;
+	    push @these_cuts, pos while (/$site_re/g);
+	    $_ = $_ - length($enz->string) + $cut_site for @these_cuts;
 	}
+	else { # "nonambig"
+	    my $index_posn=index($_, $recog);
+	    return [] if ($index_posn == -1); # there is no match to the sequence
+	    # there is at least one cut site
+	    while ($index_posn > -1) {
+		push (@these_cuts, $index_posn+$cut_site);
+		$index_posn=index($_, $recog, $index_posn+1);
+	    }
+	}
+	push @cuts, @these_cuts;
     }
     return [@cuts];
 }
