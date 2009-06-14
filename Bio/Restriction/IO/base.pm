@@ -1,4 +1,4 @@
-# $Id$
+# $Id: base.pm 15761 2009-06-14 02:10:00Z maj $
 #
 # BioPerl module for Bio::Restriction::IO::base
 #

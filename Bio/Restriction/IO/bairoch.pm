@@ -1,4 +1,4 @@
-# $Id$
+# $Id: bairoch.pm 15762 2009-06-14 02:33:08Z maj $
 # BioPerl module for Bio::Restriction::IO::withrefm
 #
 # Please direct questions and support issues to <bioperl-l@bioperl.org> 
