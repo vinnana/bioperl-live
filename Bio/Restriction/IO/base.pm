@@ -64,6 +64,7 @@ Rob Edwards, redwards@utmem.edu
 =head1 CONTRIBUTORS
 
 Heikki Lehvaslaiho, heikki-at-bioperl-dot-org
+Mark A. Jensen, maj-at-fortinbras-dot-us
 
 =head1 APPENDIX
 
@@ -82,7 +83,6 @@ use Bio::Restriction::Enzyme;
 use Bio::Restriction::EnzymeCollection;
 use Bio::Restriction::Enzyme::MultiCut;
 use Bio::Restriction::Enzyme::MultiSite;
-use Data::Dumper;
 
 use base qw(Bio::Restriction::IO);
 
@@ -142,8 +142,6 @@ sub _initialize {
 
 =cut
 
-
-
 sub read {
     my $self = shift;
 
@@ -153,8 +151,6 @@ sub read {
         chomp;
         next if /^\s*$/;
         my ($name, $site, $cut) = split /\s+/;
-        #foreach my $key (keys %{$res}) {
-        #my ($site, $cut) = split /\s+/, $res->{$key};
         my $re = Bio::Restriction::Enzyme->new(-name => $name,
                                               -site => $site,
                                               -cut => $cut);
@@ -162,8 +158,6 @@ sub read {
     }
     return $renzs;
 }
-
-
 
 =head2 write
 
@@ -241,6 +235,7 @@ class. (They are 'protected' in the sense the word is used in Java.)
            Does nothing to site if it does not have the cut string
  Returns : array of site_string, forward_cut_position, reverse_cut_position
  Args    : recognition site string
+ Note    : Not used in withrefm refactor/maj
 
 =cut
 
@@ -287,6 +282,7 @@ sub _meth {
  Returns : Cut position in correct coordinates
  Args    : 1. Original cut position
            2. Length of the recognition site
+ Note    : Not used in withrefm.pm refactor/maj
 
 =cut
 
@@ -321,23 +317,28 @@ sub _make_multisites {
     my ($self, $renzs, $re, $sites, $meths) = @_;
 
     bless $re, 'Bio::Restriction::Enzyme::MultiSite';
-    #print Dumper $re, $sites, $meths;
 
     my $count = 0;
     while ($count < scalar @{$sites}) {
-        #print ">>>>>>>>>>>", scalar @{$sites}, ">>>>>>>>>>>>>>>>>>>>>> $count\n";
+	
         my $re2 = $re->clone;
 
-
         my $site = @{$sites}[$count];
-        my ($cut, $comp_cut);
-        ($site, $cut, $comp_cut) = $self->_cuts_from_site($site);
-        $re2->site($site);
+	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
+	
+        my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
 
         if ($cut) {
-            $re->cut($self->_coordinate_shift_to_cut(length($site), $cut));
-            $re->complementary_cut($self->_coordinate_shift_to_cut(length($site), $comp_cut));
-        }
+            $re2->cut($cut + length $recog);
+            $re2->complementary_cut($comp_cut + length $recog);
+	}
+	
+	# set the site attribute
+	$re2->site($recog);
+
+	# set the recog attribute (which will make the regexp transformation
+	# if necessary:
+	$re2->recog($recog);
 
 
         if ($meths and @$meths) {
@@ -349,17 +350,12 @@ sub _make_multisites {
         $count++;
     }
 
-
     foreach my $enz ($re->others) {
         $enz->others($re, grep {$_ ne $enz} $re->others);
     }
 
-    #print Dumper $re;
-
     1;
 }
-
-
 
 =head2 _make_multicuts
 
@@ -391,17 +387,9 @@ sub _make_multicuts {
     my ($self, $renzs, $re, $precut) = @_;
 
     bless $re, 'Bio::Restriction::Enzyme::MultiCut';
-
+ 
     my ($cut, $comp_cut) = $precut =~ /(-?\d+)\/(-?\d+)/;
     
-    # Pads the front to prevent detection of sites when the 1st
-    # cut is off the end of the sequence.
-
-    # resetting the site this way trashes the original cut site;
-    # there isn't a reason to do it with the new patches. /maj
-#    my $site = $re->site;
-#    $re->site(('N' x abs($cut)) . $site);
-
     my $re2 = $re->clone;
 
     $re2->cut("-$cut");
@@ -411,7 +399,6 @@ sub _make_multicuts {
 
     1;
 }
-
 
 =head2 _companies
 
@@ -424,7 +411,6 @@ sub _make_multicuts {
 	     (e.g. A = Amersham Pharmacia Biotech)
 
 =cut
-
 
 sub _companies {
     # this is just so it is easy to set up the codes that REBASE uses

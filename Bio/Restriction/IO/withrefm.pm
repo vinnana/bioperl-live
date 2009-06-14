@@ -63,6 +63,7 @@ Rob Edwards, redwards@utmem.edu
 =head1 CONTRIBUTORS
 
 Heikki Lehvaslaiho, heikki-at-bioperl-dot-org
+Mark A. Jensen, maj-at-fortinbras-dot-us
 
 =head1 APPENDIX
 
@@ -115,23 +116,14 @@ sub read {
         my ($name) = $entry =~ /^(\S+)/;
         my ($site) = $entry =~ /\<3\>([^\n]+)/;
 
-#	$DB::single = 1 if $name =~ /AjuI/;
         if ( ! defined $site || $site eq '' or $site eq '?') {
             $self->warn("$name: no site. Skipping") if $self->verbose > 1;
             next;
         }
 
-
-	# this regexp now parses all possible components
-	# $1 : (s/t) or undef 
-	# $2 : [site]
-	# $3 : (m/n) or undef /maj
-	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
-	$site =~ s/\($precut\)//;	
-
         # there are a couple of sequences that have multiple
         # recognition sites eg M.PhiBssHII: ACGCGT,CCGCGG,RGCGCY,RCCGGY,GCGCGC
-
+	# TaqII : GACCGA(11/9),CACCCA(11/9)
 
         my @sequences;
         if ($site =~ /\,/) {
@@ -139,18 +131,24 @@ sub read {
             $site=shift @sequences;
         }
 
-        my ($cut, $comp_cut);
-        ($site, $cut, $comp_cut) = $self->_cuts_from_site($site);
+	# this regexp now parses all possible components
+	# $1 : (s/t) or undef 
+	# $2 : [site]
+	# $3 : (m/n) or undef /maj
 
+	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
+
+        my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
+
+	# when enz is constructed, site() will contain original characters,
+	# but recog() will contain a regexp if required.../maj
         my $re = Bio::Restriction::Enzyme->new(-name=>$name,
-                                              -site => $site,
+					       -site => $recog,
 					       -recog => $recog
-                                             );
-        $renzs->enzymes($re);
-
+	    );
         if ($cut) {
-            $re->cut($self->_coordinate_shift_to_cut(length($site), $cut));
-            $re->complementary_cut($self->_coordinate_shift_to_cut(length($site), $comp_cut));
+            $re->cut($cut + length $recog);
+	    $re->complementary_cut($comp_cut + length $recog);
         }
 
         #
@@ -158,7 +156,7 @@ sub read {
         #
 
         my ($isoschizomers) = $entry =~ /<2>([^\n]+)/;
-
+	
         if ($isoschizomers) {
             # bug 2179
             # here's the trick; if there are no enzymes here, the enzyme in <1>
@@ -169,9 +167,8 @@ sub read {
             
             # we could add in a hook to check an outside prototype file here
             # at some point; for now we'll just warn if is_prototype() is called
-            my @isos = split /\,/, $isoschizomers;
+            my @isos = split(/\,/, $isoschizomers);
             $re->isoschizomers(@isos);
-            #$re->is_prototype(0);
         } else {
             $re->is_prototype(1);
         }
@@ -191,9 +188,8 @@ sub read {
                                        $self->_meth($re,$3,$4));
             }
             elsif ($meth =~ /(\S+)\((\d+)\)/ ) { # one msite per site or more sites
-                #print Dumper $meth;
                 $re->methylation_sites( $self->_meth($re,$1,$2) );
-                @meths = split /, /, $meth;
+                @meths = split (/\, /, $meth);
                 $meth=shift @meths;
             } else {
                 $self->warn("Unknown methylation format [$meth]") if $self->verbose >0;
@@ -231,7 +227,8 @@ sub read {
         $self->_make_multisites($renzs, $re, \@sequences, \@meths) if @sequences;
 
         $self->_make_multicuts($renzs, $re, $precut) if $precut;
-
+	       
+        $renzs->enzymes($re);
     }
 
     return $renzs;
