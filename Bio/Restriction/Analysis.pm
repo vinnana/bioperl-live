@@ -124,7 +124,7 @@ There are two separate algorithms used depending on whether your
 enzyme has ambiguity. The non-ambiguous algoritm is a lot faster,
 and if you are using very large sequences you should try and use
 this algorithm. If you have a large sequence (e.g. genome) and 
-want to use ambgiuous enzymes you may want to make seperate
+want to use ambgiuous enzymes you may want to make separate
 Bio::Restriction::Enzyme objects for each of the possible
 alternatives and make sure that you do not set is_ambiguous!
 
@@ -818,9 +818,8 @@ sub _cuts {
 
             # deal with is_circular sequences
             if ($self->{'_seq'}->is_circular) {
-		$self->warn('not dealing with circular seqs currently');
-#                $cut_positions=$self->_circular($beforeseq, $afterseq, $enzyme);
-#               push @all_cuts, @$cut_positions;
+                $cut_positions=$self->_circular($target_seq, $enzyme);
+               push @all_cuts, @$cut_positions;
             }
 
             # we need to deal with non-palindromic enzymes separately
@@ -838,6 +837,11 @@ sub _cuts {
 
 		$cut_positions = $self->_make_cuts($target_seq, $enzyme, 'COMP');
                 push @all_cuts, @$cut_positions;
+            # deal with is_circular sequences
+		if ($self->{'_seq'}->is_circular) {
+		    $cut_positions=$self->_circular($target_seq, $enzyme, 'COMP');
+		    push @all_cuts, @$cut_positions;
+		}
             }
         }
 
@@ -1214,84 +1218,56 @@ sub _multiple_cuts {
 =head2 _circular
 
  Title     : _circular
- Function  : Deals with circular sequences
- Returns   : Nothing.
- Arguments : None.
-
-There are two problems with circular sequences.
-
-  1. When you cut a sequence and rejoin fragments you could generate
-  new cut sites.
-
-  2. There could be a cut site at the end of the sequence.
-
-I think these may be the same problem, and so we're working on #2 first!
+ Function  : Identifies cuts at the join of the end of the target with
+             the beginning of the target
+ Returns   : array of scalar integers ( cut sites near join, if any )
+ Arguments : scalar string (target sequence), Bio::Restriction::Enzyme obj
 
 =cut
 
 sub _circular {
-    my ($self, $beforeseq, $afterseq, $enz) = @_;
-    my $target_seq=uc $self->{'_seq'}->seq; # I have been burned on this before :)
+    my ($self, $target, $enz, $comp) = @_;
+    my $target=uc $target;
+    my $patch_len = ( length $target > 20 ? 10 : int( length($target)/2 ) );
+    
+    my ($first, $last) =
+	(substr($target, 0, $patch_len),substr($target, -$patch_len));
+    my $patch=$last.$first;
+    
+    # now find the cut sites
+    
+    my $cut_positions = $self->_make_cuts($patch, $enz, $comp);
+    
+    # the enzyme doesn't cut in the new fragment
+    return [] if (!$cut_positions);
+    
+    # now we are going to add things to _cut_positions
+    # in this shema it doesn't matter if the site is there twice - 
+    # we will take care of that later. Because we are using position
+    # rather than frag or anything else, we can just
+    # remove duplicates.
+    my @circ_cuts;
+    foreach my $cut (@$cut_positions) {
+	if ($cut == length($last)) {
+	    # the cut is actually at position 0, but we're going to call this the
+	    # length of the sequence so we don't confuse no cuts with a 0 cut
+#	    push (@circ_cuts, $self->{'_seq'}->length);
+	    push (@circ_cuts, 0);
 
-    # the approach I am taking is to find out the longest enzyme in the collection
-    # (I'll have to add a new function in enzyme collection for this)
-    # and then add more than that sequence from the end of the sequence to the start
-    # of the sequence, and map the new cut sites for each of the enzymes.
-
-    # The cut sites that we are interested in must be within the length of the 
-    # enzyme sequence from the start or the end.
-
-    my $longest_enz=$self->{'_enzymes'}->longest_cutter;
-    my $longest_cut=$longest_enz->recognition_length;
-    # this is an error that I don't want to deal with at the moment
-    $self->throw("Crap. The longest recognition site ($longest_cut) is longer than the".
-      " length of the sequence") if ($longest_cut > $self->{'_seq'}->length);
-
-   # newseq is just the last part of the sequence and the first part of the sequence
-   # we don't want to go through and check the whole sequence again
-
-   my ($first, $last) =
-       (substr($target_seq, 0, $longest_cut),substr($target_seq, -$longest_cut));
-   my $newseq=$last.$first;
-
-   # now find the cut sites
-   # if the enzyme is ambiguous we need to use a regexp to find the cut site
-   # otherwise we can use index (much faster)
-   my $cut_positions;
-   if ($enz->is_ambiguous) {
-      $cut_positions= $self->_ambig_cuts($beforeseq, $afterseq, $newseq, $enz);
-   } else {
-      $cut_positions=$self->_nonambig_cuts($beforeseq, $afterseq, $newseq, $enz);
-   }
-
-   # the enzyme doesn't cut in the new fragment - likely to be default	
-   return [] if (!$cut_positions);
-
-   # now we are going to add things to _cut_positions
-   # in this shema it doesn't matter if the site is there twice - 
-   # we will take care of that later. Because we are using position
-   # rather than frag or anything else, we can just
-   # remove duplicates.
-   my @circ_cuts;
-   foreach my $cut (@$cut_positions) {
-    if ($cut == length($last)) {
-     # the cut is actually at position 0, but we're going to call this the
-     # length of the sequence so we don't confuse no cuts with a 0 cut
-     push (@circ_cuts, $self->{'_seq'}->length);
+	}
+	elsif ($cut < length($last)) {
+	    # the cut is before the end of the sequence
+	    #check
+	    push (@circ_cuts, $self->{'_seq'}->length - (length($last) - $cut));
+	}
+	else {
+	    # the cut is at the start of the sequence (position >=1)
+	    
+	    # note, we put this at the beginning of the array rather than the end!
+	    unshift (@circ_cuts, $cut-length($last));
+	}
     }
-    elsif ($cut < length($last)) {
-     # the cut is before the end of the sequence
-     # there is VERY likely to be an off by one error here
-     push (@circ_cuts, $self->{'_seq'}->length - (length($last) - $cut));
-    }
-    else {
-     # the cut is at the start of the sequence (position >=1)
-     # there is VERY likely to be an off by one error here
-     # note, we put this at the beginning of the array rather than the end!
-     unshift (@circ_cuts, $cut-length($last));
-    }
-   }
-   return \@circ_cuts;
+    return \@circ_cuts;
 }
 
 
