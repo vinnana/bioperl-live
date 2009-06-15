@@ -1582,6 +1582,7 @@ sub clone {
 	(ref =~ /^Bio::/) && do {
 	    $thing = {};
 	    bless($thing, ref);
+	    $visited->{$this} = $thing;
 	    foreach my $attr (keys %{$_}) {
 		$thing->{$attr} = (defined $_->{$attr} ? $self->clone($_->{$attr},$visited) : undef );
 	    }
@@ -1589,6 +1590,7 @@ sub clone {
 	};
 	(ref eq 'ARRAY') && do {
 	    $thing = [];
+	    $visited->{$this} = $thing;
 	    foreach my $elt (@{$_}) {
 		push @$thing, (defined $elt ? $self->clone($elt,$visited) : undef);
 	    }
@@ -1596,6 +1598,7 @@ sub clone {
 	};
 	(ref eq 'HASH') && do {
 	    $thing = {};
+	    $visited->{$this} = $thing;
 	    foreach my $key (%{$_}) {
 		$thing->{$key} = (defined $_->{key} ? $self->clone( $_->{$key},$visited) : undef );
 	    }
@@ -1603,11 +1606,12 @@ sub clone {
 	};
 	(ref eq 'SCALAR') && do {
 	    $thing = ${$_};
+	    $visited->{$this} = $thing;
 	    $thing = \$thing;
 	    last;
 	};
     }
-    $visited->{$this} = $thing if ref($thing);
+
     return $thing;
 }
 
