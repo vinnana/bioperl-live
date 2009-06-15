@@ -366,10 +366,16 @@ sub new {
 
     # site
     #
-    # note that the site() setter with automatically set
+    # note that the site() setter will automatically set
     # cut(), complementary_cut(), if the cut site is indicated
     # in $site with '^' /maj
 
+    # create the cut site if appropriate/this is a kludge due to 
+    # the base.pm format in the new B:R order...
+    if ( $cut and $cut <= length $site) {
+	    $site = substr($site, 0, $cut).'^'.substr($site, $cut);
+    }
+    
     if ($site) {
 	$self->site($site);
     }
@@ -384,6 +390,8 @@ sub new {
 	$seq && $self->recog($seq);
 	$site && $self->recog($site);
     }
+    # call revcom_site to initialize it and revcom_recog:
+    $self->revcom_site();
 
     $recog = $self->string; # for length calculations below
     
@@ -433,7 +441,6 @@ sub new {
 	$re2->complementary_cut($xln_sub ? $xln_sub->($self, -$pc_comp_cut) : -$pc_comp_cut);
 	$self->others($re2);
     }
-	
 
     return $self;
 }
@@ -545,7 +552,7 @@ sub site {
         if (defined $first) {
             $self->cut(length $first);
             $self->complementary_cut(length $second);
-        $self->revcom_site($self->{_seq}->revcom->seq);
+	    $self->revcom_site();
         }
     }
     return $self->{'_site'};
@@ -559,57 +566,63 @@ sub site {
  Example   : $seq_string = $re->revcom_site();
  Returns   : String containing recognition sequence indicating
            : cleavage site as in  'G^AATTC'.
- Argument  : Sequence of the site
+ Argument  : none (sets on first call)
  Throws    : n/a
 
 This is the same as site, except it returns the revcom site. For
 palindromic enzymes these two are identical. For non-palindromic
 enzymes they are not!
 
+On set, this also handles setting the revcom_recog attribute.
+
 See also L<site|site> above.
 
 =cut
 
-# dodgy. /maj
-
 sub revcom_site {
-    my ($self, $site)=@_;
+    my $self = shift;
+    # getter
+    return $self->{'_revcom_site'} unless !$self->{'_revcom_site'};
+
+    # setter
+    my $site = $self->{'_site'};
     if ($self->is_palindromic) {
       $self->{'_revcom_site'}=$self->{'_site'};
+      $self->revcom_recog( $self->string );
       return $self->{'_revcom_site'};
     }
-    if ($site) {
-        $self->throw("Unrecognized characters in revcom site: [$site]")
-            if $site =~ /[^ATGCMRWSYKVHDBN\^]/i;
+
+    $self->throw("Unrecognized characters in revcom site: [$site]")
+	if $site =~ /[^ATGCMRWSYKVHDBN\^]/i;
 	
-        # we may have to redefine this if there is a ^ in the sequence
-
-        # first, check and see if we have a cut site in the sequence
-        # if so, find the position, and set the target sequence and cut site
-        my $pos=$self->complementary_cut;
-        $site =~ s/(.{$pos})/$1\^/;
+    if ($site =~ /\^/) {
+	# first, check and see if we have a cut site indicated in the sequence
+	# if so, find the position, and set the target sequence and cut site
+	$site = $self->revcom;
+	$self->revcom_recog( $site );
+	my $c = length($site)-$self->cut;
+	$site = substr($site, 0, $c).'^'.substr($site,$c);
         $self->{'_revcom_site'} = $site;
-
     }
-    unless ($self->{'_revcom_site'}) {
-       my $revcom=$self->revcom;
-       my $cc=$self->complementary_cut;
-       my $hat=length($revcom)-$cc+1; # we need it on the other strand!
-       if ($cc > length($revcom)) {
-        my $pad= "N" x ($cc-length($revcom));
-	$revcom = $pad. $revcom;
-	$hat=length($revcom)-$cc+1;
-       }
-       elsif ($cc < 0) {
-        my $pad = "N" x -$cc;
-	$revcom .= $pad;
-	$hat=length($revcom);
-       }
-       $revcom =~ s/(.{$hat})/$1\^/;
-       $self->{'_revcom_site'}=$revcom;
-   }
-
-    return $self->{'_revcom_site'};
+    else {
+	my $revcom=$self->revcom;
+	$self->revcom_recog( $revcom );
+# 	my $cc=$self->complementary_cut;
+# 	my $hat=length($revcom)-$cc+1; # we need it on the other strand!
+# 	if ($cc > length($revcom)) {
+# 	    my $pad= "N" x ($cc-length($revcom));
+# 	    $revcom = $pad. $revcom;
+# 	    $hat=length($revcom)-$cc+1;
+# 	}
+# 	elsif ($cc < 0) {
+# 	    my $pad = "N" x -$cc;
+# 	    $revcom .= $pad;
+# 	    $hat=length($revcom);
+# 	}
+# 	$revcom =~ s/(.{$hat})/$1\^/;
+	$self->{'_revcom_site'}=$revcom;
+    }
+	return $self->{'_revcom_site'};
 }
 
 =head2 cut
@@ -662,19 +675,16 @@ sub cut {
              unless $value =~ /[-+]?\d+/;
          $self->{'_cut'} = $value;
 
-	 # padding requirements are factored out/maj
-#          if (length ($self->{_site}) < $value ) {
-#              my $pad_length = $value - length $self->{_site};
-#              $self->{_site} .= 'N' x $pad_length;
-#          }
 	 # add the caret to the site attribute only if internal /maj
 	 if ( ($self->{_site} !~ /\^/) && ($value <= length ($self->{_site}))) {
 	     $self->{_site} =
 		 substr($self->{_site}, 0, $value). '^'. substr($self->{_site}, $value);
 	 }
+
 	 # auto-set comp cut only if cut site is inside the recog site./maj
 	 $self->complementary_cut(length ($self->seq->seq) - $value )
-	     if (($self->{_site} =~ /\^/) && ($self->{_type} eq 'II'));
+	     if (($self->{_site} =~ /\^/) && ($self->type eq 'II'));
+
      }
      # return undef if not defined yet, not 0 /maj
      return $self->{'_cut'};
@@ -830,9 +840,9 @@ sub string {
 
  Title   : recog
  Usage   : $enz->recog($recognition_sequence)
- Function: Gets/sets the pure recognition site, which remains unpadded 
-           by Ns in the case of extra-site cutters [unlike site() and
-           string()]. As for string(), the cut indicating carets (^)
+ Function: Gets/sets the pure recognition site. Sets as 
+           regexp if appropriate.
+           As for string(), the cut indicating carets (^)
            are expunged.
  Example : 
  Returns : value of recog (a scalar)
@@ -847,6 +857,31 @@ sub recog{
     $recog =~ s/\^//g;
     $recog = _expand($recog) if $recog =~ /[^ATGC]/;
     return $self->{'recog'} = $recog;
+}
+
+=head2 revcom_recog
+
+ Title   : revcom_recog
+ Usage   : $enz->revcom_recog($recognition_sequence)
+ Function: Gets/sets the pure reverse-complemented recognition site.
+           Sets as regexp if appropriate.
+           As for string(), the cut indicating carets (^) are expunged.
+ Example : 
+ Returns : value of recog (a scalar)
+ Args    : on set, new value (a scalar or undef, optional)
+
+=cut
+
+sub revcom_recog{
+    my $self = shift;
+    my $recog = shift;
+    unless ($recog) {
+	$self->throw( "revcom recognition site not set; call \$enz->revcom_site to initialize" ) unless $self->{'revcom_recog'};
+	return $self->{'revcom_recog'};
+    }
+    $recog =~ s/\^//g;
+    $recog = _expand($recog) if $recog =~ /[^ATGC]/;
+    return $self->{'revcom_recog'} = $recog;
 }
 
 =head2 revcom
@@ -936,6 +971,7 @@ sub cutter {
 =head2 is_palindromic
 
  Title     : is_palindromic
+ Alias     : palindromic
  Usage     : $re->is_palindromic();
  Function  : Determines if the recognition sequence is palindromic
            : for the current restriction enzyme.
@@ -950,21 +986,46 @@ A palindromic site (EcoRI):
 
 =cut
 
-# I just renamed this because is_palindromic fits in better
-# with the other is_? methods
-sub palindromic {
- my $self=shift;
- return $self->is_palindromic(@_);
-}
-
 sub is_palindromic {
     my $self = shift;
+    return $self->{_palindromic} if defined $self->{_palindromic};
     if ($self->string eq $self->revcom) {
-        $self->{_palindromic}=1;
+        return $self->{_palindromic}=1;
     }
-    return $self->{_palindromic} || 0;
+    return $self->{_palindromic} = 0;
 }
 
+sub palindromic { shift->is_palindromic(@_) } 
+
+=head2 is_symmetric
+
+ Title     : is_symmetric
+ Alias     : symmetric
+ Usage     : $re->is_symmetric();
+ Function  : Determines if the enzyme is a symmetric cutter
+ Returns   : Boolean
+ Argument  : none
+
+A symmetric but non-palindromic site (HindI):
+       v     
+  5-C A C-3
+  3-G T G-5
+     ^      
+=cut
+
+sub is_symmetric {
+    my $self = shift;
+    return $self->{_symmetric} if defined $self->{_symmetric};
+    if ($self->is_palindromic) {
+	return $self->{_symmetric} = 1;
+    }
+    if ($self->cut == length($self->string) - $self->complementary_cut) {
+        return $self->{_symmetric}=1;
+    }
+    return $self->{_symmetric} = 0;
+}
+
+sub symmetric { shift->is_symmetric(@_) } 
 
 
 =head2 overhang
