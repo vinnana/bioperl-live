@@ -401,37 +401,17 @@ sub new {
     # happens here
 
     if (defined $cut) {
-	if ($xln_sub) {
-	    $self->cut( $xln_sub->($self, $cut) );
-	}
-	else { # default
-	    $self->cut($cut + length $recog); # xln for withrefm coords
-	}
+	    $self->cut( $xln_sub ? $xln_sub->($self, $cut) : $cut );
     }
     elsif ( defined $pc_cut ) {
-	if ($xln_sub) {
-	    $self->cut( $xln_sub->($self, $pc_cut) );
-	}
-	else { # default
-	    $self->cut($pc_cut + length $recog); # xln for withrefm coords
-	}
+	    $self->cut( $xln_sub ? $xln_sub->($self, $pc_cut) : $pc_cut );
     }
 
     if (defined $complementary_cut) {
-	if ($xln_sub) {
-	    $self->complementary_cut($xln_sub->($self,$complementary_cut));
-	}
-	else {
-	    $self->complementary_cut($complementary_cut + length $recog);
-	}
+	$self->complementary_cut($xln_sub ? $xln_sub->($self,$complementary_cut) : $complementary_cut);
     }
     elsif (defined $pc_comp_cut) {
-	if ($xln_sub) {
-	    $self->complementary_cut($xln_sub->($self,$pc_comp_cut));
-	}
-	else {
-	    $self->complementary_cut($pc_comp_cut + length $recog);
-	}
+	$self->complementary_cut($xln_sub ? $xln_sub->($self,$pc_comp_cut) : $pc_comp_cut);
     }
 
     $is_prototype && $self->is_prototype($is_prototype);
@@ -449,8 +429,8 @@ sub new {
 	bless $self, 'Bio::Restriction::Enzyme::MultiCut';
 	my ($pc_cut, $pc_comp_cut) = $precut =~ /(-?\d+)\/(-?\d+)/;
 	my $re2 = $self->clone;
-	$re2->cut(-$pc_cut);
-	$re2->complementary_cut(-$pc_comp_cut);
+	$re2->cut($xln_sub ? $xln_sub->($self, -$pc_cut) : -$pc_cut);
+	$re2->complementary_cut($xln_sub ? $xln_sub->($self, -$pc_comp_cut) : -$pc_comp_cut);
 	$self->others($re2);
     }
 	
@@ -1227,6 +1207,7 @@ sub is_neoschizomer {
 =head2 prototype_name
 
  Title    : prototype_name
+ Alias    : prototype
  Usage    : $re->prototype_name
  Function : Get/Set method for the name of prototype for
             this enzyme's recognition site
@@ -1250,6 +1231,8 @@ sub prototype_name {
     return $self->name if $self->{'_is_prototype'};
     return $self->{'_prototype'} || '';
 }
+
+sub prototype { shift->prototype_name(@_) }
 
 =head2 isoschizomers
 
