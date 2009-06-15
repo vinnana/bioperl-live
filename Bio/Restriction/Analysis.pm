@@ -360,7 +360,7 @@ sub cut {
     my ($self, $opt, $ec) = @_;
 
     # for the moment I have left this as a separate routine so
-    # the user calls cuts rather than _cuts. This also initializes
+    # the user calls cut rather than _cuts. This also initializes
     # some stuff we need to use.
   
     $self->throw("A sequence must be supplied")
@@ -677,7 +677,7 @@ sub cuts_by_enzyme {
                 larger or equalthan first, optional
 
 
-If no argumets are given, the method returns all enzymes that do cut
+If no arguments are given, the method returns all enzymes that do cut
 the sequence. The argument zero, '0', is same as method
 zero_cutters().  The argument one, '1', corresponds to unique_cutters.
 If either of the limits is larger than number of cuts any enzyme cuts the
@@ -800,15 +800,9 @@ sub _cuts {
         my @others = $enz->others if $enz->can("others");
         foreach my $enzyme ($enz, @others) {
             # cut the sequence
-
-            # if the enzyme is ambiguous we need to use a regexp to find the cut site
-            # otherwise we can use index (much faster)
-
-            # All of these methods return references to arrays. 
-            # All of the arrays are positions in the DNA where the sequence is cut
-            # We will push everything into @all_cuts, and then deconvolute it
-            # and figure everything else out from there.
-	
+	    # _make_cuts handles all cases (amibiguous, non-ambiguous) X
+	    # (palindromic X non-palindromic)
+	    # 
             my $cut_positions = $self->_make_cuts($target_seq, $enzyme);
 
             push @all_cuts, @$cut_positions;
@@ -821,17 +815,9 @@ sub _cuts {
                 $cut_positions=$self->_circular($target_seq, $enzyme);
                push @all_cuts, @$cut_positions;
             }
-
-            # we need to deal with non-palindromic enzymes separately
-	    
-	    # so _non_pal_enz *only* delivers minus strand cuts, but in
-	    # plus strand coords./maj
-	    # rewrite using the new "comp" arg to the cutting methods..
-	    # this is still far from ideal
-	    # (need to handle circularity separately, then)
-	    # /maj
-
-            unless ($enzyme->is_palindromic) {
+	    # non-symmetric cutters (most external cutters, e.g.) need 
+	    # special handling
+            unless ($enzyme->is_symmetric) {
 		# do all of above with explicit use of the 
 		# enzyme's 'complementary_cut'...
 
@@ -1155,6 +1141,7 @@ sub _make_cuts {
     my ($self, $target, $enz, $comp) = @_;
     local $_ = uc $target;
     my @cuts;
+
     my @enzs = map { $_ || () } ($enz, $enz->can('others') ? $enz->others : ());
     foreach $enz (@enzs) {
 	my $recog = $enz->recog;
@@ -1165,6 +1152,16 @@ sub _make_cuts {
 	    my $site_re = qr/($recog)/;
 	    push @these_cuts, pos while (/$site_re/g);
 	    $_ = $_ - length($enz->string) + $cut_site for @these_cuts;
+	    if (!$enz->is_palindromic) {
+		pos = 0;
+		my @these_rev_cuts;
+		$recog = $enz->revcom_recog;
+		$cut_site = length($enz->string) - ($comp ? $enz->cut : $enz->complementary_cut);
+		$site_re = qr/($recog)/;
+		push @these_rev_cuts, pos while (/$site_re/g);
+		$_ = $_ - length($enz->string) + $cut_site for @these_rev_cuts;
+		push @these_cuts, @these_rev_cuts;
+	    }
 	}
 	else { # "nonambig"
 	    my $index_posn=index($_, $recog);
@@ -1173,6 +1170,15 @@ sub _make_cuts {
 	    while ($index_posn > -1) {
 		push (@these_cuts, $index_posn+$cut_site);
 		$index_posn=index($_, $recog, $index_posn+1);
+	    }
+	    if (!$enz->is_palindromic) {
+		$recog = $enz->revcom_recog;
+		$cut_site = length($enz->string) - ($comp ? $enz->cut : $enz->complementary_cut);
+		$index_posn=index($_, $recog);
+		while ($index_posn > -1) {
+		    push @these_cuts, $index_posn+$cut_site;
+		    $index_posn=index($_, $recog, $index_posn+1);
+		}
 	    }
 	}
 	push @cuts, @these_cuts;
