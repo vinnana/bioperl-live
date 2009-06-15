@@ -194,7 +194,7 @@ sub read {
 	    -references    => [@refs],
 	    -xln_sub       => sub { 
 		                my ($z,$c) = @_; 
-		                return ($c < 0 ? $c : length($z->recog)+$c)
+		                return ($c < 0 ? $c : length($z->string)+$c)
 	                      }
 	    );
 
