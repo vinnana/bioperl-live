@@ -1,4 +1,4 @@
-# $Id: base.pm 15761 2009-06-14 02:10:00Z maj $
+# $Id$
 #
 # BioPerl module for Bio::Restriction::IO::base
 #
@@ -306,12 +306,8 @@ sub _coordinate_shift_to_cut {
 
 =cut
 
-# what is the point of the collection object here? The root Enzyme object
-# is added to the collection elsewhere, and the subordinate Enzyme objects
-# are accessed through others(). They shouldn't go in the Collection anyway
-# since they don't really represent entire enzymes, only a part of the 
-# behavior of a single enzyme. /maj
 # removed the enzyme collection from arg list /maj
+
 sub _make_multisites {
     my ($self, $re, $sites, $meths) = @_;
 
@@ -379,11 +375,6 @@ BEFORE the start of the recognition site, i.e. negative positions.
 
 =cut
 
-# what is the point of the collection object here? The root Enzyme object
-# is added to the collection elsewhere, and the subordinate Enzyme objects
-# are accessed through others(). They shouldn't go in the Collection anyway
-# since they don't really represent entire enzymes, only a part of the 
-# behavior of a single enzyme. /maj
 # removed the enzyme collection from arg list /maj
 
 sub _make_multicuts {

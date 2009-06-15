@@ -202,7 +202,11 @@ sub read {
 	    -isoschizomers => [@isos],
 	    -source        => $source,
 	    -vendors       => [@vendors],
-	    -references    => [@refs]
+	    -references    => [@refs],
+	    -xln_sub       => sub { 
+		                my ($z,$c) = @_; 
+		                return ($c < 0 ? $c : length($z->recog)+$c)
+	                      }
 	    );
 
         #
