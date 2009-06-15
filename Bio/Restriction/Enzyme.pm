@@ -1237,6 +1237,7 @@ sub prototype { shift->prototype_name(@_) }
 =head2 isoschizomers
 
  Title     : isoschizomers
+ Alias     : isos
  Usage     : $re->isoschizomers(@list);
  Function  : Gets/Sets a list of known isoschizomers (enzymes that
              recognize the same site, but don't necessarily cut at
@@ -1245,8 +1246,8 @@ sub prototype { shift->prototype_name(@_) }
  Returns   : A reference to an array of the known isoschizomers or 0
              if not defined.
 
-This has to be the hardest name to spell.  Added for compatibility to
-REBASE
+This has to be the hardest name to spell, so now you can use the alias
+'isos'.  Added for compatibility to REBASE
 
 =cut
 
@@ -1263,10 +1264,12 @@ sub isoschizomers {
      
 }
 
+sub isos { shift->isoschizomers(@_) }
 
 =head2 purge_isoschizomers
 
  Title     : purge_isoschizomers
+ Alias     : purge_isos
  Usage     : $re->purge_isoschizomers();
  Function  : Purges the set of isoschizomers for this enzyme
  Arguments : 
@@ -1279,6 +1282,8 @@ sub purge_isoschizomers {
     $self->{_isoschizomers} = [];
 
 }
+
+sub purge_isos { shift->purge_isoschizomers(@_) }
 
 =head2 methylation_sites
 
