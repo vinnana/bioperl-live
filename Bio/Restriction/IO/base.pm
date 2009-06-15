@@ -328,8 +328,10 @@ sub _make_multisites {
 	# if necessary:
 	$re2->recog($recog);
 	$recog = $re2->string;
-
+	
+	no warnings; # avoid 'uninitialized value' warning against $postcut
         my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
+	use warnings;
 
         if ($cut) {
             $re2->cut($cut + length $recog);

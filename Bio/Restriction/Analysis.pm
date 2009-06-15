@@ -1233,7 +1233,7 @@ sub _multiple_cuts {
 
 sub _circular {
     my ($self, $target, $enz, $comp) = @_;
-    my $target=uc $target;
+    $target=uc $target;
     my $patch_len = ( length $target > 20 ? 10 : int( length($target)/2 ) );
     
     my ($first, $last) =

@@ -136,6 +136,10 @@ sub read {
 	# $2 : [site]
 	# $3 : (m/n) or undef /maj
 
+	no warnings; # avoid faulty 'uninitialized value' warnings
+                     # occurring against the variables set by 
+	             # regexp matching (unless anyone has other ideas...)
+
 	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
 
 
@@ -167,28 +171,26 @@ sub read {
         # microbe
         #
         my ($microbe) = $entry =~ /<5>([^\n]+)/;
-#        $re->microbe($microbe) if $microbe;
 
         #
         # source
         #
         my ($source) = $entry =~ /<6>([^\n]+)/;
- #       $re->source($source) if $source;
 
         #
         # vendors
         #
         my ($vendors) = $entry =~ /<7>([^\n]+)/;
 	my @vendors = split(/ */, $vendors);
-#        $re->vendors(split / */, $vendors) if $vendors;
+
 
         #
         # references
         #
         my ($refs) = $entry =~ /<8>(.+)/s;
 	my @refs = map {split /\n+/} $refs;
-#        $re->references(map {split /\n+/} $refs) if $refs;
 
+	use warnings; 
 	       
 	# when enz is constructed, site() will contain original characters,
 	# but recog() will contain a regexp if required.../maj

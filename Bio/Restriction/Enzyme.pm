@@ -360,6 +360,9 @@ sub new {
     $self->{_vendors} = [];
     $self->{_references} = [];
 
+    # squelch warnings
+    $postcut ||='';
+
     # enzyme name
     $enzyme && $self->name($enzyme);
     $name && $self->name($name);
@@ -1648,9 +1651,11 @@ sub clone {
 	(ref eq 'HASH') && do {
 	    $thing = {};
 	    $visited->{$this} = $thing;
+	    no warnings; # avoid 'uninitialized value' warning against $key
 	    foreach my $key (%{$_}) {
 		$thing->{$key} = (defined $_->{key} ? $self->clone( $_->{$key},$visited) : undef );
 	    }
+	    use warnings;
 	    last;
 	};
 	(ref eq 'SCALAR') && do {
