@@ -1017,7 +1017,9 @@ A symmetric but non-palindromic site (HindI):
 =cut
 
 sub is_symmetric {
+    no warnings qw( uninitialized );
     my $self = shift;
+	
     return $self->{_symmetric} if defined $self->{_symmetric};
     if ($self->is_palindromic) {
 	return $self->{_symmetric} = 1;
@@ -1651,7 +1653,7 @@ sub clone {
 	(ref eq 'HASH') && do {
 	    $thing = {};
 	    $visited->{$this} = $thing;
-	    no warnings; # avoid 'uninitialized value' warning against $key
+	    no warnings qw( uninitialized ); # avoid 'uninitialized value' warning against $key
 	    foreach my $key (%{$_}) {
 		$thing->{$key} = (defined $_->{key} ? $self->clone( $_->{$key},$visited) : undef );
 	    }

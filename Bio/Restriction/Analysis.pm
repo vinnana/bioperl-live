@@ -1138,8 +1138,11 @@ sub _nonambig_cuts {
 =cut
  
 sub _make_cuts {
+    no warnings qw( uninitialized );
+
     my ($self, $target, $enz, $comp) = @_;
     local $_ = uc $target;
+
     my @cuts;
 
     my @enzs = map { $_ || () } ($enz, $enz->can('others') ? $enz->others : ());
