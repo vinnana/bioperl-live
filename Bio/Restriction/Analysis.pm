@@ -1143,6 +1143,7 @@ sub _make_cuts {
     my @cuts;
 
     my @enzs = map { $_ || () } ($enz, $enz->can('others') ? $enz->others : ());
+ENZ:
     foreach $enz (@enzs) {
 	my $recog = $enz->recog;
 	my $cut_site = ($comp ? $enz->complementary_cut : $enz->cut);
@@ -1165,7 +1166,7 @@ sub _make_cuts {
 	}
 	else { # "nonambig"
 	    my $index_posn=index($_, $recog);
-	    return [] if ($index_posn == -1); # there is no match to the sequence
+	    next ENZ if ($index_posn == -1); # there is no match to the sequence
 	    # there is at least one cut site
 	    while ($index_posn > -1) {
 		push (@these_cuts, $index_posn+$cut_site);
