@@ -150,22 +150,6 @@ sub read {
         my ($isoschizomers) = $entry =~ /<2>([^\n]+)/;
 	my @isos = split(/\,/,$isoschizomers);
 	my $is_prototype = (@isos ? 1 : 0);
-	
-#         if ($isoschizomers) {
-#             # bug 2179
-#             # here's the trick; if there are no enzymes here, the enzyme in <1>
-#             # is the prototype (see withref format for this).  However, one
-#             # can't unequivocally assign prototype based on the presence of
-#             # enzymes or which one is first without building a logic kit on
-#             # determining how these are assigned.
-            
-#             # we could add in a hook to check an outside prototype file here
-#             # at some point; for now we'll just warn if is_prototype() is called
-#             @isos = split(/\,/, $isoschizomers);
-#             $re->isoschizomers(@isos);
-#         } else {
-#             $re->is_prototype(1);
-#         }
 
         #
         # microbe
@@ -205,10 +189,7 @@ sub read {
 	    -source        => $source,
 	    -vendors       => [@vendors],
 	    -references    => [@refs],
-	    -xln_sub       => sub { 
-		                my ($z,$c) = @_; 
-		                return ($c < 0 ? $c : length($z->string)+$c)
-	                      }
+	    -xln_sub       => \&_xln_sub
 	    );
 
         #
@@ -234,6 +215,9 @@ sub read {
             }
         }
 
+	# the _make_multicuts function now takes place in the 
+	# Enzyme constructor / maj
+
         #
         # create special types of Enzymes
 	# (because of object cloning in _make_multisites, this happens
@@ -244,7 +228,7 @@ sub read {
 	# but it requires the methylation info, which 
 	# is more natural to get out here in the parsing./maj
 
-        $self->_make_multisites($re, \@sequences, \@meths) if @sequences;
+        $self->_make_multisites($re, \@sequences, \@meths, \&_xln_sub) if @sequences;
 
         $renzs->enzymes($re);
 
@@ -254,6 +238,20 @@ sub read {
     return $renzs;
 }
 
+=head2 _xln_sub
+
+ Title   : _xln_sub
+ Function: Translates withrefm coords to Bio::Restriction coords
+ Args    : Bio::Restriction::Enzyme object, scalar integer (cut posn)
+ Note    : Used internally; pass as a coderef to the B:R::Enzyme 
+           constructor
+
+=cut
+
+sub _xln_sub { 
+    my ($z,$c) = @_; 
+    return ($c < 0 ? $c : length($z->string)+$c);
+}
 
 =head2 write
 

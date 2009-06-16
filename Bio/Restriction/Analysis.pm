@@ -1166,8 +1166,6 @@ ENZ:
 	}
 	else { # "nonambig"
 	    my $index_posn=index($_, $recog);
-	    next ENZ if ($index_posn == -1); # there is no match to the sequence
-	    # there is at least one cut site
 	    while ($index_posn > -1) {
 		push (@these_cuts, $index_posn+$cut_site);
 		$index_posn=index($_, $recog, $index_posn+1);

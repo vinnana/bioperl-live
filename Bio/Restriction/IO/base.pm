@@ -159,6 +159,23 @@ sub read {
     return $renzs;
 }
 
+=head2 _xln_sub
+
+ Title   : _xln_sub
+ Function: Translates withrefm coords to Bio::Restriction coords
+ Args    : Bio::Restriction::Enzyme object, scalar integer (cut posn)
+ Note    : Used internally; pass as a coderef to the B:R::Enzyme 
+           constructor
+ Note    : It is convenient for each format module to have its own 
+           version of this; not currently demanded by the interface.
+=cut
+
+sub _xln_sub { # for base.pm, a no-op
+    my ($z,$c) = @_; 
+    return $c;
+}
+
+
 =head2 write
 
  Title   : write
@@ -309,35 +326,49 @@ sub _coordinate_shift_to_cut {
 # removed the enzyme collection from arg list /maj
 
 sub _make_multisites {
-    my ($self, $re, $sites, $meths) = @_;
+    my ($self, $re, $sites, $meths, $xln_sub) = @_;
 
     bless $re, 'Bio::Restriction::Enzyme::MultiSite';
 
     my $count = 0;
     while ($count < scalar @{$sites}) {
-	
-        my $re2 = $re->clone;
+	# this should probably be refactored to use the constructor
+	# too, rather than the clone/accessor method /maj
+#        my $re2 = $re->clone;
+#	my $re2;
 
         my $site = @{$sites}[$count];
 	my ($precut, $recog, $postcut) = ( $site =~ m/^(?:\((\w+\/\w+)\))?([\w^]+)(?:\((\w+\/\w+)\))?/ );
 	
 	# set the site attribute
-	$re2->site($recog);
+#	$re2->site($recog);
 
 	# set the recog attribute (which will make the regexp transformation
 	# if necessary:
-	$re2->recog($recog);
-	$recog = $re2->string;
+#	$re2->recog($recog);
+#	$recog = $re2->string;
 	
-	no warnings; # avoid 'uninitialized value' warning against $postcut
-        my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
-	use warnings;
+# 	no warnings; # avoid 'uninitialized value' warning against $postcut
+#         my ($cut, $comp_cut) = ( $postcut =~  /(-?\d+)\/(-?\d+)/ );
+# 	use warnings;
+	
+	# note the following hard codes the coordinate transformation
+	# used for rebase/itype2 : this method will break on the 
+	# base.pm format. 
+#         if ($cut) {
+#             $re2->cut($cut + length $recog);
+#             $re2->complementary_cut($comp_cut + length $recog);
+# 	}
+	
+	my $re2 = Bio::Restriction::Enzyme::MultiSite->new(
+	    -name     => $re->name,
+	    -site     => $recog,
+	    -recog    => $recog,
+	    -precut   => $precut,
+	    -postcut  => $postcut,
+	    -xln_sub  => $xln_sub
+	    );
 
-        if ($cut) {
-            $re2->cut($cut + length $recog);
-            $re2->complementary_cut($comp_cut + length $recog);
-	}
-	
         if ($meths and @$meths) {
             $re2->purge_methylation_sites;
             $re2->methylation_sites($self->_meth($re2, @{$meths}[$count]));

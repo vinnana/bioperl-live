@@ -146,19 +146,6 @@ sub read {
             $site=shift @sequences;
         }
 
-# this stuff perfomed in Enzyme constructor now, with appropriate site
-# translation in a coderef to arg -xln_sub /maj
-
-#         my ($cut, $comp_cut);
-#         ($site, $cut, $comp_cut) = $self->_cuts_from_site($site);
-
-
-#         if ($cut) {
-#             $re->cut($self->_coordinate_shift_to_cut(length($site), $cut));
-#             $re->complementary_cut($self->_coordinate_shift_to_cut(length($site), $comp_cut));
-#         }
-
-
         #
         # prototype 
         #
@@ -182,6 +169,7 @@ sub read {
 
 	# when enz is constructed, site() will contain original characters,
 	# but recog() will contain a regexp if required.../maj
+
         my $re = Bio::Restriction::Enzyme->new(
 	    -name          => $name,
 	    -site          => $recog,
@@ -192,16 +180,13 @@ sub read {
 	    -prototype     => $prototype,
 	    -vendors       => [@vendors],
 	    -references    => [@refs],
-	    -xln_sub       => sub { 
-		                my ($z,$c) = @_; 
-		                return ($c < 0 ? $c : length($z->string)+$c)
-	                      }
+	    -xln_sub       => \&_xln_sub
 	    );
 
         #
         # methylation
         #
-        # [easier to set here during parsing than in constructor]
+        # [easier to set here during parsing than in constructor] /maj
         my @meths;
         if ($meth) {
             # this can be either X(Y) or X(Y),X2(Y2)
@@ -233,7 +218,20 @@ sub read {
     return $renzs;
 }
 
+=head2 _xln_sub
 
+ Title   : _xln_sub
+ Function: Translates withrefm coords to Bio::Restriction coords
+ Args    : Bio::Restriction::Enzyme object, scalar integer (cut posn)
+ Note    : Used internally; pass as a coderef to the B:R::Enzyme 
+           constructor
+
+=cut
+
+sub _xln_sub { 
+    my ($z,$c) = @_; 
+    return ($c < 0 ? $c : length($z->string)+$c);
+}
 
 =head2 write
 
