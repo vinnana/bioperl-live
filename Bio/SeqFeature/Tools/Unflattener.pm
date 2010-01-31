@@ -14,7 +14,8 @@
 
 =head1 NAME
 
-Bio::SeqFeature::Tools::Unflattener - turns flat list of genbank-sourced features into a nested SeqFeatureI hierarchy
+Bio::SeqFeature::Tools::Unflattener - turns flat list of genbank-sourced
+features into a nested SeqFeatureI hierarchy
 
 =head1 SYNOPSIS
 
